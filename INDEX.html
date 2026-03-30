@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jelly Emoji.io</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #050508; overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none; user-select: none;
+        }
+        canvas { display: block; }
+        
+        .ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
+        }
+        .menu {
+            background: rgba(15, 20, 30, 0.85); padding: 30px; border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.9), 0 0 25px rgba(79, 195, 247, 0.4);
+            pointer-events: auto; min-width: 320px; transition: 0.3s;
+            border: 1px solid rgba(100, 200, 255, 0.2); backdrop-filter: blur(10px); color: white;
+            max-height: 90vh; overflow-y: auto;
+        }
+        .hidden { display: none !important; }
+        
+        h1 { margin-top: 0; color: #4fc3f7; font-size: 38px; text-shadow: 0 0 15px rgba(79,195,247,0.8); letter-spacing: 2px;}
+        h2 { color: #fff; margin-top: 0; }
+        p { color: #aaa; font-size: 16px; }
+        
+        button {
+            display: block; width: 100%; padding: 15px; margin: 10px 0;
+            font-size: 18px; font-weight: bold; color: white; border: none;
+            border-radius: 10px; cursor: pointer; background: linear-gradient(45deg, #1e88e5, #42a5f5);
+            box-shadow: 0 4px 15px rgba(30, 136, 229, 0.4); transition: 0.2s; text-transform: uppercase;
+        }
+        button:active { transform: translateY(4px); box-shadow: none; }
+        .btn-green { background: linear-gradient(45deg, #43a047, #66bb6a); box-shadow: 0 4px 15px rgba(67, 160, 71, 0.4); }
+        .btn-red { background: linear-gradient(45deg, #e53935, #ef5350); box-shadow: 0 4px 15px rgba(229, 57, 53, 0.4); }
+        .btn-purple { background: linear-gradient(45deg, #8e24aa, #ab47bc); box-shadow: 0 4px 15px rgba(142, 36, 170, 0.4); }
+        
+        /* UI In-Game */
+        #hud {
+            position: absolute; top: 15px; left: 15px; pointer-events: none;
+            color: white; font-size: 20px; font-weight: bold;
+            text-shadow: 0 2px 5px black, 0 0 10px rgba(255,255,255,0.4); text-align: left;
+        }
+        #hud span { color: #ffd54f; }
+        #leaderboard {
+            position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.5);
+            padding: 15px; border-radius: 15px; color: white; pointer-events: none;
+            font-size: 14px; text-align: left; min-width: 160px; border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(5px);
+        }
+        #leaderboard strong { display: block; margin-bottom: 5px; color: #4fc3f7; text-transform: uppercase; }
+        .boss-text { color: #ff5252; font-weight: bold; text-shadow: 0 0 8px red; }
+        .player-text { color: #66bb6a; font-weight: bold; text-shadow: 0 0 8px #66bb6a;}
+        
+        .skills-container { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
+        .skill-card {
+            background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.2); flex: 1; color: white; transition: 0.2s;
+        }
+        .skill-card:hover { background: rgba(255,255,255,0.15); transform: scale(1.05); border-color:#4fc3f7; }
+        .skill-card:active { transform: scale(0.95); }
+
+        #dashBtn {
+            position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px;
+            border-radius: 50%; background: linear-gradient(135deg, #ff9100, #ff1744);
+            box-shadow: 0 5px 20px rgba(255, 23, 68, 0.6); color: white; font-size: 16px;
+            font-weight: bold; display: flex; justify-content: center; align-items: center;
+            pointer-events: auto; cursor: pointer; border: 3px solid rgba(255,255,255,0.5);
+            user-select: none; transition: 0.1s;
+        }
+        #dashBtn:active { transform: scale(0.85); box-shadow: 0 0 10px rgba(255, 23, 68, 0.8); }
+
+        /* Skins UI */
+        .stat-text { color: #ffd54f; font-weight: bold; font-size: 18px; margin-bottom: 15px; text-shadow: 0 0 10px rgba(255,213,79,0.5); }
+        .skins-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+            gap: 10px; margin: 15px 0; max-height: 40vh; overflow-y: auto; padding-right: 5px;
+        }
+        .skins-grid::-webkit-scrollbar { width: 6px; }
+        .skins-grid::-webkit-scrollbar-thumb { background: #4fc3f7; border-radius: 3px; }
+        .skin-item {
+            background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 10px; cursor: pointer; transition: 0.2s;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .skin-item.locked { opacity: 0.4; cursor: not-allowed; filter: grayscale(80%); }
+        .skin-item.selected { border-color: #ffd54f; box-shadow: 0 0 15px rgba(255,213,79,0.5); transform: scale(1.05); background: rgba(255,213,79,0.1); }
+        .skin-item:not(.locked):hover { background: rgba(255,255,255,0.15); }
+        .skin-emoji { font-size: 32px; margin-bottom: 5px; }
+        .skin-name { font-size: 12px; font-weight: bold; margin-bottom: 5px; }
+        .skin-req { font-size: 11px; color: #aaa; background: rgba(0,0,0,0.5); padding: 2px 5px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="hud" class="hidden">
+    <div>SIZE: <span id="scoreUI">10</span></div>
+    <div>LEVEL: <span id="levelUI">1</span></div>
+</div>
+<div id="leaderboard" class="hidden">
+    <strong>Leaderboard</strong>
+    <ol id="lb-list" style="padding-left: 20px; margin: 0;"></ol>
+</div>
+
+<div id="dashBtn" class="hidden">💨 DASH</div>
+
+<div id="main-menu" class="ui-layer">
+    <div class="menu">
+        <h1>JELLY EMOJI.IO 😎</h1>
+        <div class="stat-text">Total Mass Collected: <span id="mainTotalScore">0</span></div>
+        <p>Collect mass to unlock new awesome skins!</p>
+        <button class="btn-green" onclick="startGame()">Play</button>
+        <button class="btn-purple" onclick="openSkinsMenu()">Wardrobe (Skins)</button>
+        <button onclick="showMenu('settings-menu')">Settings</button>
+    </div>
+</div>
+
+<div id="skins-menu" class="ui-layer hidden">
+    <div class="menu" style="max-width: 500px; width: 90%;">
+        <h2>Wardrobe</h2>
+        <div class="stat-text">Total Progress: <span id="skinsTotalScore">0</span></div>
+        <p style="font-size:14px; margin-bottom: 0;">Select unlocked emoji:</p>
+        <div class="skins-grid" id="skinsContainer"></div>
+        <button onclick="showMenu('main-menu')">Main Menu</button>
+    </div>
+</div>
+
+<div id="settings-menu" class="ui-layer hidden">
+    <div class="menu">
+        <h2>Settings</h2>
+        <label style="font-size: 18px; cursor: pointer;">
+            <input type="checkbox" id="sndToggle" checked style="transform: scale(1.5); margin-right: 10px;"> Sound
+        </label><br><br>
+        <button onclick="showMenu('main-menu')">Back</button>
+    </div>
+</div>
+
+<div id="game-over-menu" class="ui-layer hidden">
+    <div class="menu">
+        <h1 style="color: #ef5350;">EATEN! 💥</h1>
+        <p>Mass this run: <span id="finalScore" style="color: #ffd54f; font-size: 28px; font-weight: bold;">0</span></p>
+        <div class="stat-text" style="font-size: 16px;">Total accumulated: <span id="overTotalScore">0</span></div>
+        <button class="btn-green" onclick="startGame()">Play Again</button>
+        <button class="btn-purple" onclick="openSkinsMenu()">To Wardrobe</button>
+        <button class="btn-red" onclick="showMenu('main-menu')">Main Menu</button>
+    </div>
+</div>
+
+<div id="level-up-menu" class="ui-layer hidden">
+    <div class="menu" style="max-width: 450px;">
+        <h2 style="color: #ffd54f; text-shadow: 0 0 10px #ffd54f;">LEVEL UP!</h2>
+        <p>Choose a powerful buff (for 7 sec):</p>
+        <div class="skills-container">
+            <div class="skill-card" onclick="applySkill('speed')">⚡<br>Speed</div>
+            <div class="skill-card" onclick="applySkill('magnet')">🧲<br>Magnet</div>
+            <div class="skill-card" onclick="applySkill('shield')">🛡<br>Shield</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let cw = canvas.width = window.innerWidth;
+let ch = canvas.height = window.innerHeight;
+
+let gameState = 'MENU';
+let camera = { x: 0, y: 0, zoom: 1 };
+
+let lastTime = 0;
+let player, entities = [], pellets = [], particles = [], powerups = [], floatingTexts = [];
+let stars = [], meteors = [], shockwaves = [], viruses = [];
+let joystick = { active: false, originX: 0, originY: 0, x: 0, y: 0, dirX: 0, dirY: 0 };
+let dashCooldown = 0;
+
+const EMOJIS = ['😀', '😁', '😂', '🤣', '😉', '😊', '😋', '😜', '🤪', '😝', '🤑', '🤠', '🤡', '👽', '👻', '😺', '😈'];
+const PLANET_NAMES = ["Bot-Alpha", "Bot-Beta", "Bot-Gamma", "Destroyer", "Comet", "Slimey", "Crusher", "Devourer", "Ninja", "Goblin"];
+
+// === PROGRESSION AND SKINS ===
+const SKINS = [
+    { id: 0, emoji: '😎', hue: 200, req: 0,        name: 'Rookie' },
+    { id: 1, emoji: '😁', hue: 120, req: 2000,     name: 'Jolly' },
+    { id: 2, emoji: '😜', hue: 30,  req: 10000,    name: 'Quick' },
+    { id: 3, emoji: '😋', hue: 60,  req: 30000,    name: 'Hungry' },
+    { id: 4, emoji: '🤡', hue: 280, req: 75000,    name: 'Joker' },
+    { id: 5, emoji: '🤠', hue: 25,  req: 150000,   name: 'Sheriff' },
+    { id: 6, emoji: '👽', hue: 160, req: 300000,   name: 'Alien' },
+    { id: 7, emoji: '👻', hue: 320, req: 500000,   name: 'Phantom' },
+    { id: 8, emoji: '😈', hue: 0,   req: 800000,   name: 'Demon' },
+    { id: 9, emoji: '👑', hue: 45,  req: 1500000,  name: 'Emperor' }
+];
+
+let totalScore = parseInt(localStorage.getItem('smileyTotalScore') || '0');
+let selectedSkin = parseInt(localStorage.getItem('smileySkin') || '0');
+
+if (selectedSkin >= SKINS.length) selectedSkin = 0;
+
+function updateMenuStats() {
+    document.getElementById('mainTotalScore').innerText = totalScore.toLocaleString();
+    document.getElementById('skinsTotalScore').innerText = totalScore.toLocaleString();
+    document.getElementById('overTotalScore').innerText = totalScore.toLocaleString();
+}
+
+function openSkinsMenu() {
+    renderSkins();
+    showMenu('skins-menu');
+}
+
+function renderSkins() {
+    const container = document.getElementById('skinsContainer');
+    container.innerHTML = '';
+    
+    SKINS.forEach((skin, idx) => {
+        let isUnlocked = totalScore >= skin.req;
+        let isSelected = idx === selectedSkin;
+        
+        let div = document.createElement('div');
+        div.className = `skin-item ${isUnlocked ? 'unlocked' : 'locked'} ${isSelected ? 'selected' : ''}`;
+        
+        div.innerHTML = `
+            <div class="skin-emoji">${skin.emoji}</div>
+            <div class="skin-name" style="color: ${isUnlocked ? `hsl(${skin.hue}, 80%, 65%)` : '#fff'}">${skin.name}</div>
+            <div class="skin-req">${isUnlocked ? '✔️ UNLOCKED' : `🔒 ${skin.req.toLocaleString()}`}</div>
+        `;
+        
+        if (isUnlocked) {
+            div.onclick = () => {
+                selectedSkin = idx;
+                localStorage.setItem('smileySkin', selectedSkin);
+                renderSkins();
+            };
+        }
+        
+        container.appendChild(div);
+    });
+}
+updateMenuStats();
+
+// === AUDIO ===
+let audioCtx;
+const soundEnabled = () => document.getElementById('sndToggle').checked;
+
+function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playTone(freqStart, freqEnd, type, duration, vol=0.1) {
+    if (!soundEnabled() || !audioCtx) return;
+    let osc = audioCtx.createOscillator();
+    let gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freqStart, audioCtx.currentTime);
+    if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, audioCtx.currentTime + duration);
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
+
+function playSound(type) {
+    if (!soundEnabled() || !audioCtx) return;
+    if (type === 'eat') {
+        playTone(300, 100, 'square', 0.2, 0.15); playTone(400, 150, 'sine', 0.2, 0.1);
+    } else if (type === 'pellet') {
+        playTone(600 + Math.random()*200, 1200, 'sine', 0.1, 0.05);
+    } else if (type === 'dash') {
+        playTone(150, 50, 'sawtooth', 0.4, 0.15);
+    } else if (type === 'virus') {
+        playTone(100, 20, 'sawtooth', 0.5, 0.3); playTone(500, 50, 'square', 0.4, 0.2);
+    } else if (type === 'levelup') {
+        setTimeout(() => playTone(400, 400, 'square', 0.3, 0.1), 0);
+        setTimeout(() => playTone(500, 500, 'square', 0.3, 0.1), 100);
+        setTimeout(() => playTone(600, 800, 'square', 0.4, 0.1), 200);
+    }
+}
+
+// === CLASSES ===
+class Entity {
+    constructor(x, y, radius, hue, name, isPlayer = false, isBoss = false) {
+        this.x = x; this.y = y;
+        this.r = radius; this.targetR = radius;
+        this.hue = hue; this.name = name;
+        this.isPlayer = isPlayer; this.isBoss = isBoss;
+        this.vx = 0; this.vy = 0; this.rotation = 0;
+        this.speedLimit = 280; 
+        
+        if (this.isBoss) { this.emoji = '👹'; }
+        else if (this.isPlayer) { this.emoji = ''; }
+        else { this.emoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)]; }
+
+        this.activeBuffs = { speed: 0, magnet: 0, shield: 0 };
+        this.combo = 0; this.comboTimer = 0; this.level = 1;
+
+        if (this.isPlayer) {
+            this.numPoints = 20; this.jellyPoints = [];
+            for (let i = 0; i < this.numPoints; i++) this.jellyPoints.push({ r: radius, vr: 0 }); 
+        }
+    }
+
+    applyJellyImpact(targetX, targetY, force) {
+        if (!this.isPlayer) return; 
+        let safeForce = Math.min(force, this.targetR * 0.4); 
+        let impactAngle = Math.atan2(targetY - this.y, targetX - this.x);
+        for (let i = 0; i < this.numPoints; i++) {
+            let ptAngle = (i / this.numPoints) * Math.PI * 2;
+            let angDiff = Math.abs(Math.atan2(Math.sin(ptAngle - impactAngle), Math.cos(ptAngle - impactAngle)));
+            if (angDiff < Math.PI / 3) this.jellyPoints[i].vr += safeForce * Math.cos(angDiff * 1.5);
+        }
+    }
+
+    update(dt) {
+        if (!isFinite(this.r)) this.r = 10;
+        if (!isFinite(this.targetR)) this.targetR = 10;
+        
+        this.r += (this.targetR - this.r) * 5 * dt;
+        let currentSpeedLimit = this.speedLimit * Math.pow(10 / Math.max(10, this.r), 0.2);
+        if (this.activeBuffs.speed > 0) currentSpeedLimit *= 1.8;
+
+        if (this.isPlayer && joystick.active) {
+            this.vx += ((joystick.dirX * currentSpeedLimit) - this.vx) * 8 * dt;
+            this.vy += ((joystick.dirY * currentSpeedLimit) - this.vy) * 8 * dt;
+        } else if (this.isPlayer) {
+            this.vx *= 0.9; this.vy *= 0.9; 
+        }
+
+        this.x += this.vx * dt; this.y += this.vy * dt;
+
+        let speed = Math.hypot(this.vx, this.vy);
+        if (speed > 5) this.rotation += (speed * dt) / this.r; 
+
+        if (this.isPlayer) {
+            let moveAngle = Math.atan2(this.vy, this.vx);
+            let timeOsc = Date.now() / 300;
+            let visualSpeed = Math.min(speed, this.r * 4);
+            
+            for (let i = 0; i < this.numPoints; i++) {
+                let p = this.jellyPoints[i];
+                let baseR = this.r;
+                let ptAngle = (i / this.numPoints) * Math.PI * 2;
+
+                if (visualSpeed > 10) {
+                    let angDiff = Math.abs(Math.atan2(Math.sin(ptAngle - moveAngle), Math.cos(ptAngle - moveAngle)));
+                    let deform = Math.min(visualSpeed * 0.04, this.r * 0.3); 
+                    if (angDiff < Math.PI / 2) baseR -= deform * Math.cos(angDiff); 
+                    else baseR += (deform * 0.5) * Math.abs(Math.cos(angDiff)); 
+                }
+
+                p.vr += (baseR - p.r) * 0.15; 
+                let left = this.jellyPoints[(i - 1 + this.numPoints) % this.numPoints];
+                let right = this.jellyPoints[(i + 1) % this.numPoints];
+                p.vr += ((left.r + right.r) / 2 - p.r) * 0.1;
+                p.vr += Math.sin(timeOsc + i) * (this.r * 0.005);
+            }
+
+            for (let i = 0; i < this.numPoints; i++) {
+                this.jellyPoints[i].vr *= 0.75; 
+                this.jellyPoints[i].r += this.jellyPoints[i].vr;
+                if (!isFinite(this.jellyPoints[i].r)) { this.jellyPoints[i].r = this.r; this.jellyPoints[i].vr = 0; }
+                this.jellyPoints[i].r = Math.max(this.r * 0.5, Math.min(this.jellyPoints[i].r, this.r * 1.8));
+            }
+        }
+        for (let buff in this.activeBuffs) if (this.activeBuffs[buff] > 0) this.activeBuffs[buff] -= dt;
+    }
+
+    draw(ctx) {
+        if (!isFinite(this.x) || !isFinite(this.y) || !isFinite(this.r) || this.r <= 0) return;
+        ctx.save(); ctx.translate(this.x, this.y);
+
+        if (this.activeBuffs.shield > 0) {
+            ctx.save(); ctx.rotate(performance.now() / 300);
+            ctx.beginPath(); ctx.arc(0, 0, this.r + 20, 0, Math.PI * 2);
+            ctx.setLineDash([20, 15]); ctx.strokeStyle = "#00e5ff"; ctx.lineWidth = 6; ctx.stroke();
+            ctx.restore();
+        }
+
+        if (this.isPlayer) {
+            ctx.rotate(this.rotation);
+            let pts = [];
+            for(let i=0; i<this.numPoints; i++) {
+                let a = (i / this.numPoints) * Math.PI * 2;
+                pts.push({ x: Math.cos(a) * this.jellyPoints[i].r, y: Math.sin(a) * this.jellyPoints[i].r });
+            }
+            ctx.beginPath();
+            ctx.moveTo((pts[0].x + pts[this.numPoints-1].x)/2, (pts[0].y + pts[this.numPoints-1].y)/2);
+            for (let i = 0; i < this.numPoints; i++) {
+                let next = pts[(i + 1) % this.numPoints];
+                ctx.quadraticCurveTo(pts[i].x, pts[i].y, (pts[i].x + next.x)/2, (pts[i].y + next.y)/2);
+            }
+            ctx.closePath();
+            ctx.fillStyle = `hsla(${this.hue}, 80%, 50%, 0.45)`; ctx.fill();
+            ctx.lineWidth = Math.max(3, this.r * 0.08); ctx.strokeStyle = `hsla(${this.hue}, 80%, 80%, 0.9)`; ctx.stroke();
+        } else {
+            ctx.beginPath(); ctx.arc(0, 0, this.r, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${this.hue}, 80%, 50%, 0.45)`;
+            if(this.isBoss) ctx.fillStyle = 'rgba(80,0,0,0.85)';
+            ctx.fill();
+            ctx.lineWidth = Math.max(3, this.r * 0.08);
+            ctx.strokeStyle = `hsla(${this.hue}, 80%, 80%, 0.9)`;
+            if(this.isBoss) ctx.strokeStyle = '#ff1744';
+            ctx.stroke(); ctx.rotate(this.rotation);
+        }
+
+        ctx.font = `${this.r * 1.2}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(this.emoji, 0, this.r * 0.05); 
+        
+        if (this.isPlayer) { ctx.restore(); ctx.save(); ctx.translate(this.x, this.y); } else { ctx.rotate(-this.rotation); }
+
+        ctx.beginPath(); ctx.arc(0, 0, this.r * 0.75, -Math.PI * 0.85, -Math.PI * 0.6);
+        ctx.lineWidth = Math.max(2, this.r * 0.15); ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, this.r * 0.75, -Math.PI * 0.45, -Math.PI * 0.35);
+        ctx.lineWidth = Math.max(2, this.r * 0.15); ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.stroke();
+
+        ctx.fillStyle = this.isBoss ? '#ff5252' : 'white'; ctx.font = `bold ${Math.max(14, this.r * 0.35)}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineWidth = 4;
+        ctx.strokeText(this.name, 0, -this.r - 20); ctx.fillText(this.name, 0, -this.r - 20);
+        
+        ctx.restore();
+    }
+}
+
+class AI extends Entity {
+    constructor(x, y, radius, hue, name, isBoss = false) {
+        super(x, y, radius, hue, name, false, isBoss);
+        this.changeDirTimer = 0;
+    }
+    update(dt) {
+        this.changeDirTimer -= dt;
+        if (this.changeDirTimer <= 0) {
+            let angle;
+            if (this.isBoss) {
+                angle = Math.atan2(player.y - this.y, player.x - this.x);
+                if (this.targetR < player.targetR) angle += Math.PI; 
+            } else {
+                angle = Math.random() * Math.PI * 2;
+            }
+            
+            let currentSpeedLimit = this.speedLimit * Math.pow(10 / Math.max(10, this.r), 0.2);
+            let speedMult = this.isBoss ? 0.85 : 0.6;
+            
+            this.vx = Math.cos(angle) * currentSpeedLimit * speedMult;
+            this.vy = Math.sin(angle) * currentSpeedLimit * speedMult;
+            
+            this.changeDirTimer = this.isBoss ? 0.5 : 1 + Math.random() * 3; 
+        }
+        super.update(dt);
+    }
+}
+
+// === PROCEDURAL GENERATION ===
+function getSpawnPos(minDist, maxDist) {
+    let ang = Math.random() * Math.PI * 2;
+    let dist = minDist + Math.random() * (maxDist - minDist);
+    return { x: player.x + Math.cos(ang) * dist, y: player.y + Math.sin(ang) * dist };
+}
+
+function initWorld() {
+    stars = []; pellets = []; entities = [player]; powerups = []; particles = []; shockwaves = []; meteors = []; viruses = [];
+    for (let i = 0; i < 300; i++) {
+        let pos = getSpawnPos(0, 3000);
+        stars.push({ x: pos.x, y: pos.y, r: Math.random() * 2.5 + 0.5, speed: Math.random()*2+0.5, offset: Math.random()*Math.PI*2 });
+    }
+    for (let i = 0; i < 400; i++) {
+        let pos = getSpawnPos(0, 2500);
+        pellets.push({ x: pos.x, y: pos.y, r: 4 + Math.random()*5, hue: Math.floor(Math.random()*360), offset: Math.random()*100 });
+    }
+    for (let i = 0; i < 15; i++) {
+        let pos = getSpawnPos(500, 3000);
+        viruses.push({ x: pos.x, y: pos.y, r: 60 + Math.random()*40, rotation: Math.random() });
+    }
+    for(let i=0; i<25; i++) {
+        let pos = getSpawnPos(800, 2500);
+        entities.push(new AI(pos.x, pos.y, 15 + Math.random() * 40, Math.floor(Math.random() * 360), PLANET_NAMES[Math.floor(Math.random() * PLANET_NAMES.length)]));
+    }
+}
+
+function maintainInfiniteWorld() {
+    let viewDistX = (cw / camera.zoom) / 2;
+    let viewDistY = (ch / camera.zoom) / 2;
+    let maxDist = Math.max(viewDistX, viewDistY) + 800;
+
+    pellets.forEach(p => {
+        if (Math.hypot(p.x - player.x, p.y - player.y) > maxDist) {
+            let pos = getSpawnPos(maxDist - 200, maxDist + 200); p.x = pos.x; p.y = pos.y;
+        }
+    });
+    stars.forEach(s => {
+        if (Math.hypot(s.x - player.x, s.y - player.y) > maxDist + 500) {
+            let pos = getSpawnPos(maxDist, maxDist + 500); s.x = pos.x; s.y = pos.y;
+        }
+    });
+    viruses.forEach(v => {
+        if (Math.hypot(v.x - player.x, v.y - player.y) > maxDist + 1000) {
+            let pos = getSpawnPos(maxDist + 200, maxDist + 800);
+            v.x = pos.x; v.y = pos.y; v.r = 60 + Math.random()*40;
+        }
+    });
+    entities.forEach(e => {
+        if (!e.isPlayer && Math.hypot(e.x - player.x, e.y - player.y) > maxDist + 1000) {
+            let pos = getSpawnPos(maxDist, maxDist + 800);
+            e.x = pos.x; e.y = pos.y;
+            if (!e.isBoss) { e.r = 15 + Math.random() * 40; e.targetR = e.r; }
+        }
+    });
+}
+
+function spawnBoss() {
+    let pos = getSpawnPos(1500, 2000); 
+    let boss = new AI(pos.x, pos.y, player.targetR * 1.5, 0, 'BOSS: BLACK HOLE', true);
+    entities.push(boss);
+    createShockwave(pos.x, pos.y, '#ff5252', 1500);
+    createFloatingText("⚠️ BOSS IS HUNTING YOU! ⚠️", player.x, player.y - 200, "#ff1744");
+    playSound('virus');
+}
+
+// === EFFECTS & MECHANICS ===
+function createParticles(x, y, colorStr, count, speedMult = 1) {
+    for (let i = 0; i < count; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = (Math.random() * 300 + 100) * speedMult;
+        particles.push({ x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: Math.random() * 6 + 3, color: colorStr, life: 1.0, maxLife: 1.0 });
+    }
+}
+function createFloatingText(text, x, y, color) { floatingTexts.push({ text: text, x: x, y: y, life: 1.5, color: color }); }
+function createShockwave(x, y, color, maxRadius = 400) { shockwaves.push({ x: x, y: y, r: 10, maxR: maxRadius, life: 1.0, color: color }); }
+
+function checkCollisions() {
+    for (let i = 0; i < entities.length; i++) {
+        let ent = entities[i];
+        let magnetRange = ent.activeBuffs.magnet > 0 ? ent.r + 300 : ent.r;
+
+        for (let j = pellets.length - 1; j >= 0; j--) {
+            let p = pellets[j];
+            let dist = Math.hypot(ent.x - p.x, ent.y - p.y);
+            if (ent.activeBuffs.magnet > 0 && dist < magnetRange) {
+                p.x += (ent.x - p.x) * 0.15; p.y += (ent.y - p.y) * 0.15;
+            }
+            if (dist < ent.r) {
+                ent.targetR += 15 / ent.targetR; 
+                if (ent.isPlayer) { ent.applyJellyImpact(p.x, p.y, 10); playSound('pellet'); checkLevelUp(); }
+                let pos = getSpawnPos((cw/camera.zoom)/2, (cw/camera.zoom)/2 + 500); 
+                p.x = pos.x; p.y = pos.y;
+            }
+        }
+    }
+
+    for (let i = 0; i < entities.length; i++) {
+        let ent = entities[i];
+        for (let v of viruses) {
+            if (Math.hypot(ent.x - v.x, ent.y - v.y) < ent.r + v.r - 10) {
+                if (ent.r > v.r * 1.1) {
+                    ent.targetR *= 0.6; 
+                    playSound('virus');
+                    createShockwave(ent.x, ent.y, '#76ff03', 600);
+                    createFloatingText("💥 VIRUS!", ent.x, ent.y, "#76ff03");
+                    for(let k=0; k<20; k++) {
+                        let ang = Math.random()*Math.PI*2;
+                        pellets.push({ x: ent.x + Math.cos(ang)*ent.r, y: ent.y + Math.sin(ang)*ent.r, r: 8, hue: ent.hue, offset: 0 });
+                    }
+                    let pos = getSpawnPos(2000, 3000); v.x = pos.x; v.y = pos.y;
+                }
+            }
+        }
+    }
+
+    for (let i = 0; i < entities.length; i++) {
+        for (let j = i + 1; j < entities.length; j++) {
+            let e1 = entities[i]; let e2 = entities[j];
+            let dist = Math.hypot(e1.x - e2.x, e1.y - e2.y);
+            if (dist < Math.max(e1.r, e2.r)) {
+                let eater, eaten, idx;
+                if (e1.r > e2.r * 1.1) { eater = e1; eaten = e2; idx = j; }
+                else if (e2.r > e1.r * 1.1) { eater = e2; eaten = e1; idx = i; }
+
+                if (eater && eaten) {
+                    if (eaten.activeBuffs.shield > 0) {
+                        eaten.activeBuffs.shield = 0;
+                        eaten.vx = (eaten.x - eater.x) * 15; eaten.vy = (eaten.y - eater.y) * 15;
+                        createParticles(eaten.x, eaten.y, "#00e5ff", 30, 3);
+                        createShockwave(eaten.x, eaten.y, "#00e5ff", 250);
+                        createFloatingText("BLOCKED!", eaten.x, eaten.y, "#00e5ff");
+                        continue;
+                    }
+
+                    if (eater.isPlayer) eater.applyJellyImpact(eaten.x, eaten.y, eaten.r * 0.8);
+                    eater.targetR = Math.sqrt(eater.targetR*eater.targetR + eaten.r*eaten.r * 0.7);
+
+                    createParticles(eaten.x, eaten.y, `hsl(${eaten.hue}, 80%, 50%)`, 50, 3);
+                    createShockwave(eaten.x, eaten.y, `hsl(${eater.hue}, 80%, 60%)`, eater.r * 2);
+                    
+                    if (eater.isPlayer || eaten.isPlayer) playSound('eat');
+                    if (eater.isPlayer) { createFloatingText(eaten.emoji + " CHOMP!", eaten.x, eaten.y, "#ffd54f"); checkLevelUp(); }
+
+                    entities.splice(idx, 1);
+                    if (entities.length < 25) {
+                        let pos = getSpawnPos(1500, 2500);
+                        entities.push(new AI(pos.x, pos.y, 15 + Math.random() * 40, Math.floor(Math.random() * 360), PLANET_NAMES[Math.floor(Math.random() * PLANET_NAMES.length)]));
+                    }
+                    if (eaten.isPlayer) gameOver();
+                    break;
+                }
+            }
+        }
+    }
+}
+
+function checkLevelUp() {
+    let nextThreshold = player.level * 30 + 20;
+    if (player.targetR > nextThreshold) {
+        player.level++;
+        playSound('levelup');
+        createShockwave(player.x, player.y, '#ffd54f', 800);
+        gameState = 'LEVEL_UP';
+        document.getElementById('level-up-menu').classList.remove('hidden');
+    }
+    updateHUD();
+}
+
+function applySkill(type) {
+    player.activeBuffs[type] = 7;
+    document.getElementById('level-up-menu').classList.add('hidden');
+    gameState = 'PLAYING'; lastTime = performance.now();
+}
+
+function doDash() {
+    if (gameState !== 'PLAYING' || dashCooldown > 0 || player.targetR <= 20) return;
+    playSound('dash'); dashCooldown = 1.0; player.targetR *= 0.9;
+    let speed = Math.hypot(player.vx, player.vy);
+    if (speed > 10) { player.vx += (player.vx / speed) * 1500; player.vy += (player.vy / speed) * 1500; } 
+    else { let ang = Math.random() * Math.PI*2; player.vx += Math.cos(ang)*1500; player.vy += Math.sin(ang)*1500; }
+    createParticles(player.x, player.y, '#ff9100', 40, 4);
+    createShockwave(player.x, player.y, '#ff9100', player.r*3);
+}
+
+function drawBackground() {
+    let bgGrad = ctx.createLinearGradient(0, 0, cw, ch);
+    bgGrad.addColorStop(0, '#020205'); bgGrad.addColorStop(1, '#0a0d1a');
+    ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, cw, ch);
+
+    ctx.save();
+    ctx.translate(cw / 2, ch / 2); ctx.scale(camera.zoom, camera.zoom); ctx.translate(-camera.x, -camera.y);
+
+    let viewDistX = (cw / camera.zoom) / 2 + 100;
+    let viewDistY = (ch / camera.zoom) / 2 + 100;
+
+    ctx.globalCompositeOperation = 'lighter';
+    let timeSec = Date.now() / 1000;
+    stars.forEach(s => {
+        if (Math.abs(s.x - camera.x) > viewDistX || Math.abs(s.y - camera.y) > viewDistY) return;
+        let alpha = 0.3 + Math.abs(Math.sin(timeSec * s.speed + s.offset)) * 0.7;
+        ctx.globalAlpha = alpha;
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+        ctx.fillStyle = '#fff'; ctx.fill();
+    });
+    ctx.globalAlpha = 1.0; ctx.globalCompositeOperation = 'source-over';
+    
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 2;
+    let gridSize = 200;
+    let startX = Math.floor((camera.x - viewDistX) / gridSize) * gridSize;
+    let startY = Math.floor((camera.y - viewDistY) / gridSize) * gridSize;
+    ctx.beginPath();
+    for (let x = startX; x < camera.x + viewDistX; x += gridSize) { ctx.moveTo(x, camera.y - viewDistY); ctx.lineTo(x, camera.y + viewDistY); }
+    for (let y = startY; y < camera.y + viewDistY; y += gridSize) { ctx.moveTo(camera.x - viewDistX, y); ctx.lineTo(camera.x + viewDistX, y); }
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+let bossTimer = 0;
+function gameLoop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    let dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+    if (dt > 0.1) dt = 0.1;
+
+    if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+        cw = canvas.width = window.innerWidth; ch = canvas.height = window.innerHeight;
+    }
+
+    if (gameState === 'PLAYING') {
+        dashCooldown -= dt;
+        let btn = document.getElementById('dashBtn');
+        if(dashCooldown > 0 || player.targetR <= 20) { btn.style.opacity = '0.5'; btn.style.filter = 'grayscale(1)'; }
+        else { btn.style.opacity = '1'; btn.style.filter = 'none'; }
+
+        entities.forEach(e => e.update(dt));
+        maintainInfiniteWorld(); 
+        checkCollisions();
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.94; p.vy *= 0.94; p.life -= dt;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+            floatingTexts[i].y -= 60 * dt; floatingTexts[i].life -= dt;
+            if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+        }
+        for (let i = shockwaves.length - 1; i >= 0; i--) {
+            shockwaves[i].r += (shockwaves[i].maxR - shockwaves[i].r) * 5 * dt; shockwaves[i].life -= dt;
+            if (shockwaves[i].life <= 0) shockwaves.splice(i, 1);
+        }
+
+        bossTimer += dt;
+        if (bossTimer > 90) { spawnBoss(); bossTimer = 0; } 
+
+        let targetZoom = Math.max(0.15, 45 / Math.max(10, player.r)); 
+        camera.zoom += (targetZoom - camera.zoom) * 4 * dt;
+        camera.x += (player.x - camera.x) * 6 * dt;
+        camera.y += (player.y - camera.y) * 6 * dt;
+        
+        updateHUD(); 
+        updateLeaderboard();
+    }
+
+    drawBackground(); 
+
+    if (gameState === 'PLAYING' || gameState === 'LEVEL_UP') {
+        ctx.save();
+        ctx.translate(cw / 2, ch / 2); ctx.scale(camera.zoom, camera.zoom); ctx.translate(-camera.x, -camera.y);
+
+        let viewX = (cw / camera.zoom)/2 + 200;
+        let viewY = (ch / camera.zoom)/2 + 200;
+
+        ctx.globalCompositeOperation = 'lighter';
+        let timeSec = Date.now()/1000;
+        pellets.forEach(p => {
+            if (Math.abs(p.x - camera.x) > viewX || Math.abs(p.y - camera.y) > viewY) return;
+            let pulse = p.r + Math.sin(timeSec*4 + p.offset) * 1.5;
+            ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1, pulse), 0, Math.PI*2);
+            ctx.fillStyle = `hsl(${p.hue}, 100%, 65%)`; ctx.fill();
+        });
+        ctx.globalCompositeOperation = 'source-over'; 
+
+        viruses.forEach(v => {
+            if (Math.abs(v.x - camera.x) > viewX + v.r || Math.abs(v.y - camera.y) > viewY + v.r) return;
+            v.rotation += 0.5 * dt;
+            ctx.save(); ctx.translate(v.x, v.y); ctx.rotate(v.rotation);
+            ctx.beginPath();
+            let spikes = 12;
+            for(let i=0; i<spikes*2; i++) {
+                let r = (i%2 === 0) ? v.r : v.r * 0.7;
+                let a = (i / (spikes*2)) * Math.PI*2;
+                if(i===0) ctx.moveTo(Math.cos(a)*r, Math.sin(a)*r);
+                else ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
+            }
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(50, 200, 50, 0.4)'; ctx.fill();
+            ctx.lineWidth = 4; ctx.strokeStyle = '#76ff03'; ctx.stroke();
+            ctx.beginPath(); ctx.arc(0,0, v.r*0.4, 0, Math.PI*2);
+            ctx.fillStyle = '#76ff03'; ctx.fill();
+            ctx.restore();
+        });
+
+        entities.sort((a, b) => a.r - b.r);
+        entities.forEach(e => {
+            if (Math.abs(e.x - camera.x) > viewX + e.r || Math.abs(e.y - camera.y) > viewY + e.r) return;
+            e.draw(ctx);
+        });
+
+        ctx.globalCompositeOperation = 'lighter';
+        shockwaves.forEach(sw => {
+            ctx.globalAlpha = Math.max(0, sw.life);
+            ctx.beginPath(); ctx.arc(sw.x, sw.y, sw.r, 0, Math.PI*2);
+            ctx.strokeStyle = sw.color; ctx.lineWidth = 4 + (sw.life * 6); ctx.stroke();
+        });
+        particles.forEach(p => {
+            let alpha = Math.max(0, p.life / p.maxLife); ctx.globalAlpha = alpha;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r * alpha, 0, Math.PI*2);
+            ctx.fillStyle = p.color; ctx.fill();
+        });
+        ctx.globalAlpha = 1.0; ctx.globalCompositeOperation = 'source-over';
+
+        floatingTexts.forEach(ft => {
+            ctx.globalAlpha = Math.max(0, ft.life / 1.5);
+            ctx.fillStyle = ft.color; ctx.font = "900 26px Arial"; ctx.textAlign = "center";
+            ctx.lineWidth = 4; ctx.strokeStyle = "#000";
+            ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillText(ft.text, ft.x, ft.y);
+        });
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+
+        // BOSS RADAR
+        entities.forEach(e => {
+            if (e.isBoss) {
+                let dx = e.x - camera.x;
+                let dy = e.y - camera.y;
+                let vX = (cw / camera.zoom) / 2;
+                let vY = (ch / camera.zoom) / 2;
+                
+                if (Math.abs(dx) > vX || Math.abs(dy) > vY) {
+                    let margin = 50; 
+                    let halfW = cw / 2 - margin;
+                    let halfH = ch / 2 - margin;
+                    
+                    let screenDx = dx * camera.zoom;
+                    let screenDy = dy * camera.zoom;
+                    
+                    let scale = Math.min(halfW / Math.abs(screenDx), halfH / Math.abs(screenDy));
+                    let indX = cw / 2 + screenDx * scale;
+                    let indY = ch / 2 + screenDy * scale;
+                    let ang = Math.atan2(dy, dx);
+                    
+                    ctx.save();
+                    ctx.setTransform(1, 0, 0, 1, 0, 0); 
+                    ctx.translate(indX, indY);
+                    ctx.rotate(ang);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(18, 0); ctx.lineTo(-15, 15); ctx.lineTo(-8, 0); ctx.lineTo(-15, -15);
+                    ctx.closePath();
+                    ctx.fillStyle = '#ff1744'; ctx.shadowBlur = 15; ctx.shadowColor = '#ff1744'; ctx.fill();
+                    ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke(); ctx.shadowBlur = 0;
+                    
+                    ctx.rotate(-ang);
+                    ctx.font = '24px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText('👹', -Math.cos(ang)*35, -Math.sin(ang)*35);
+                    
+                    ctx.fillStyle = '#ff5252'; ctx.font = 'bold 14px Arial';
+                    let distMeters = Math.floor(Math.hypot(dx, dy) / 10);
+                    ctx.fillText(distMeters + 'm', -Math.cos(ang)*65, -Math.sin(ang)*65);
+                    
+                    ctx.restore();
+                }
+            }
+        });
+
+        if (joystick.active) {
+            ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.arc(joystick.originX, joystick.originY, 65, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.fill();
+            ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(joystick.x, joystick.y, 35, 0, Math.PI*2); ctx.fillStyle = '#4fc3f7'; ctx.fill();
+            ctx.lineWidth = 3; ctx.strokeStyle = 'white'; ctx.stroke(); ctx.globalAlpha = 1.0;
+        }
+    }
+    requestAnimationFrame(gameLoop);
+}
+
+function showMenu(menuId) {
+    document.querySelectorAll('.ui-layer').forEach(el => el.classList.add('hidden'));
+    document.getElementById(menuId).classList.remove('hidden');
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('leaderboard').classList.add('hidden');
+    document.getElementById('dashBtn').classList.add('hidden');
+}
+
+function startGame() {
+    initAudio(); 
+    
+    let skinInfo = SKINS[selectedSkin];
+    
+    player = new Entity(0, 0, 20, skinInfo.hue, 'YOU', true);
+    player.emoji = skinInfo.emoji; 
+    
+    initWorld();
+    
+    showMenu('hud'); document.getElementById('leaderboard').classList.remove('hidden'); document.getElementById('dashBtn').classList.remove('hidden');
+    gameState = 'PLAYING'; lastTime = performance.now(); bossTimer = 0; dashCooldown = 0;
+}
+
+function gameOver() {
+    gameState = 'GAMEOVER'; 
+    let finalMass = Math.floor(player.targetR);
+    
+    totalScore += finalMass;
+    localStorage.setItem('smileyTotalScore', totalScore.toString());
+    
+    document.getElementById('finalScore').innerText = finalMass.toLocaleString();
+    updateMenuStats();
+    showMenu('game-over-menu');
+}
+
+function updateHUD() {
+    document.getElementById('scoreUI').innerText = Math.floor(player.targetR);
+    document.getElementById('levelUI').innerText = player.level;
+}
+function updateLeaderboard() {
+    let top = [...entities].sort((a, b) => b.r - a.r).slice(0, 5);
+    let html = '';
+    top.forEach(e => html += `<li class="${e.isBoss ? 'boss-text' : (e.isPlayer ? 'player-text' : '')}">${e.name} ${e.emoji} - ${Math.floor(e.r)}</li>`);
+    document.getElementById('lb-list').innerHTML = html;
+}
+
+function handleInputStart(x, y) {
+    if (gameState !== 'PLAYING') return;
+    joystick.active = true; joystick.originX = x; joystick.originY = y; joystick.x = x; joystick.y = y;
+}
+function handleInputMove(x, y) {
+    if (!joystick.active) return;
+    let dx = x - joystick.originX; let dy = y - joystick.originY; let dist = Math.hypot(dx, dy); let maxDist = 65;
+    if (dist > maxDist) { dx = (dx / dist) * maxDist; dy = (dy / dist) * maxDist; }
+    joystick.x = joystick.originX + dx; joystick.y = joystick.originY + dy;
+    joystick.dirX = dx / maxDist; joystick.dirY = dy / maxDist;
+}
+function handleInputEnd() { joystick.active = false; joystick.dirX = 0; joystick.dirY = 0; }
+
+canvas.addEventListener('touchstart', e => { e.preventDefault(); handleInputStart(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
+canvas.addEventListener('touchmove', e => { e.preventDefault(); handleInputMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
+canvas.addEventListener('touchend', e => { e.preventDefault(); handleInputEnd(); }, {passive: false});
+canvas.addEventListener('mousedown', e => handleInputStart(e.clientX, e.clientY));
+canvas.addEventListener('mousemove', e => handleInputMove(e.clientX, e.clientY));
+canvas.addEventListener('mouseup', handleInputEnd);
+canvas.addEventListener('mouseleave', handleInputEnd);
+
+document.getElementById('dashBtn').addEventListener('touchstart', e => { e.stopPropagation(); e.preventDefault(); doDash(); }, {passive: false});
+document.getElementById('dashBtn').addEventListener('mousedown', e => { e.stopPropagation(); e.preventDefault(); doDash(); });
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
