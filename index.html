@@ -422,7 +422,6 @@ function initWorld() {
         let pos = getSpawnPos(0, 3000);
         let speed = Math.random()*2+0.5;
         let vx = 0, vy = 0;
-        // Настройка движения фона для каждого мира
         if (cwObj.bg === 'cyber' || cwObj.bg === 'forest' || cwObj.bg === 'candy' || cwObj.bg === 'ice') vy = speed*2;
         if (cwObj.bg === 'ocean' || cwObj.bg === 'lava' || cwObj.bg === 'heaven') vy = -speed*2;
         if (cwObj.bg === 'forest') vx = speed; if (cwObj.bg === 'ice') vx = speed/2; if (cwObj.bg === 'graveyard') vx = speed*3;
@@ -508,6 +507,7 @@ function triggerAscension() {
 function triggerBossReward() { playSound('levelup'); createShockwave(player.x, player.y, '#ff1744', 3000); gameState = 'BOSS_REWARD'; document.getElementById('boss-reward-menu').classList.remove('hidden'); joystick.active = false; }
 function applyBossSkill(type) { player.epicBuffs[type] = 15; dashCooldown = 0; document.getElementById('boss-reward-menu').classList.add('hidden'); gameState = 'PLAYING'; lastTime = performance.now(); }
 
+// ИЗМЕНЕНИЕ: Теперь кнопка победы появляется после 300-го уровня
 function checkLevelUp() {
     let nextThreshold = player.level * 30 + 20;
     if (player.targetR > nextThreshold) {
@@ -638,7 +638,14 @@ function gameOver() {
     updateMenuStats(); showMenu('game-over-menu');
 }
 
-function updateHUD() { document.getElementById('scoreUI').innerText = Math.floor(player.targetR); document.getElementById('levelUI').innerText = player.level; if (player.level >= 100) document.getElementById('ascendBtn').classList.remove('hidden'); else document.getElementById('ascendBtn').classList.add('hidden'); }
+// ИЗМЕНЕНИЕ: Порог Большого Взрыва (Prestige) увеличен до 300 уровня
+function updateHUD() { 
+    document.getElementById('scoreUI').innerText = Math.floor(player.targetR); 
+    document.getElementById('levelUI').innerText = player.level; 
+    if (player.level >= 300) document.getElementById('ascendBtn').classList.remove('hidden'); 
+    else document.getElementById('ascendBtn').classList.add('hidden'); 
+}
+
 function updateLeaderboard() { let top = [...entities].sort((a, b) => b.r - a.r).slice(0, 5); let html = ''; top.forEach(e => html += `<li class="${e.isBoss ? 'boss-text' : (e.isPlayer ? 'player-text' : '')}">${e.name} ${e.emoji} - ${Math.floor(e.r)}</li>`); document.getElementById('lb-list').innerHTML = html; }
 
 function handleInputStart(x, y) { if (gameState !== 'PLAYING') return; joystick.active = true; joystick.originX = x; joystick.originY = y; joystick.x = x; joystick.y = y; }
