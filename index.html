@@ -202,7 +202,6 @@ let player, entities = [], pellets = [], particles = [], floatingTexts = [], bgP
 let joystick = { active: false, originX: 0, originY: 0, x: 0, y: 0, dirX: 0, dirY: 0 };
 let activeTouchId = null, dashCooldown = 0, pendingBossReward = false;
 
-// === ЭПИЧНЫЕ 10 МИРОВ ===
 const WORLDS = [
     { id: 0, name: "Cosmic Void", req: 0, emojis: ['😀','😂','😜','🤑','🤡','👽','👻','😈'], boss: '👹', bName: 'BLACK HOLE', bg: 'space', pell: 'circle', vType: 'spike', vCol: '#76ff03', c: {bg0:'#020205', bg1:'#0a0d1a', txt:'#fff'} },
     { id: 1, name: "Cyber Matrix", req: 1, emojis: ['🤖','👾','💻','💽','🕹️','📟'], boss: '💀', bName: 'SYSTEM.MAINFRAME', bg: 'cyber', pell: 'square', vType: 'cross_box', vCol: '#ff1744', c: {bg0:'#050011', bg1:'#110022', txt:'#00e5ff'} },
@@ -220,23 +219,15 @@ const SKINS = [ { id:0, emoji:'😎', hue:200, req:0, name:'Rookie' }, { id:1, e
 
 const SKILL_POOL = [ { id:'speed', icon:'⚡', name:'Speed', desc:'Move 2x faster' }, { id:'magnet', icon:'🧲', name:'Magnet', desc:'Pull nearby food' }, { id:'shield', icon:'🛡', name:'Shield', desc:'Block 1 bite' }, { id:'ghost', icon:'👻', name:'Ghost', desc:'Invincible to big bots' }, { id:'vaccine', icon:'💊', name:'Vaccine', desc:'Eat viruses for mass' }, { id:'frenzy', icon:'🔥', name:'Frenzy', desc:'Infinite dashes' } ];
 
-let totalScore = parseInt(localStorage.getItem('smileyTotalScore') || '0');
-let prestigeCount = parseInt(localStorage.getItem('smileyPrestige') || '0');
-let selectedSkin = parseInt(localStorage.getItem('smileySkin') || '0');
-let currentWorldId = parseInt(localStorage.getItem('smileyWorld') || '0');
-
-if (selectedSkin >= SKINS.length) selectedSkin = 0;
-if (currentWorldId >= WORLDS.length || prestigeCount < WORLDS[currentWorldId].req) currentWorldId = 0;
-
+let totalScore = parseInt(localStorage.getItem('smileyTotalScore') || '0'); let prestigeCount = parseInt(localStorage.getItem('smileyPrestige') || '0'); let selectedSkin = parseInt(localStorage.getItem('smileySkin') || '0'); let currentWorldId = parseInt(localStorage.getItem('smileyWorld') || '0');
+if (selectedSkin >= SKINS.length) selectedSkin = 0; if (currentWorldId >= WORLDS.length || prestigeCount < WORLDS[currentWorldId].req) currentWorldId = 0;
 let cwObj = WORLDS[currentWorldId]; 
 
-// === ГЕНЕРАЦИЯ КЭША ВИРУСОВ ДЛЯ 10 МИРОВ ===
 const virusCache = {};
 function initCaches() {
     WORLDS.forEach(w => {
         let vc = document.createElement('canvas'); vc.width = 200; vc.height = 200;
         let ctx = vc.getContext('2d'); ctx.translate(100, 100);
-        
         if (w.vType === 'spike') {
             ctx.beginPath(); let r=90; for(let i=0; i<24; i++) { let rad = i%2===0?r:r*0.7; let a = (i/24)*Math.PI*2; ctx.lineTo(Math.cos(a)*rad, Math.sin(a)*rad); }
             ctx.closePath(); ctx.fillStyle = 'rgba(50,200,50,0.4)'; ctx.fill(); ctx.lineWidth=6; ctx.strokeStyle=w.vCol; ctx.stroke();
@@ -284,25 +275,21 @@ function updateMenuStats() {
     document.getElementById('skinsTotalScore').innerText = totalScore.toLocaleString();
     document.getElementById('overTotalScore').innerText = totalScore.toLocaleString();
 }
-
 function renderWorlds() {
     const container = document.getElementById('worldsContainer'); container.innerHTML = '';
     WORLDS.forEach((w, idx) => {
         let isUnlocked = prestigeCount >= w.req; let isSelected = idx === currentWorldId;
-        let div = document.createElement('div');
-        div.className = `skin-item world-item ${isUnlocked ? 'unlocked' : 'locked'} ${isSelected ? 'selected' : ''}`;
+        let div = document.createElement('div'); div.className = `skin-item world-item ${isUnlocked ? 'unlocked' : 'locked'} ${isSelected ? 'selected' : ''}`;
         div.innerHTML = `<div style="font-size: 32px; margin-bottom: 5px;">${w.boss}</div><div class="skin-name" style="color: ${isUnlocked ? w.c.txt : '#fff'}">${w.name}</div><div class="skin-req">${isUnlocked ? '✔️ UNLOCKED' : `🔒 Prestige ${w.req}`}</div>`;
         if (isUnlocked) { div.onclick = () => { currentWorldId = idx; cwObj = WORLDS[currentWorldId]; localStorage.setItem('smileyWorld', currentWorldId); renderWorlds(); }; }
         container.appendChild(div);
     });
 }
-
 function renderSkins() {
     const container = document.getElementById('skinsContainer'); container.innerHTML = '';
     SKINS.forEach((skin, idx) => {
         let isUnlocked = totalScore >= skin.req; let isSelected = idx === selectedSkin;
-        let div = document.createElement('div');
-        div.className = `skin-item ${isUnlocked ? 'unlocked' : 'locked'} ${isSelected ? 'selected' : ''}`;
+        let div = document.createElement('div'); div.className = `skin-item ${isUnlocked ? 'unlocked' : 'locked'} ${isSelected ? 'selected' : ''}`;
         div.innerHTML = `<div class="skin-emoji">${skin.emoji}</div><div class="skin-name" style="color: ${isUnlocked ? `hsl(${skin.hue}, 80%, 65%)` : '#fff'}">${skin.name}</div><div class="skin-req">${isUnlocked ? '✔️ UNLOCKED' : `🔒 ${skin.req.toLocaleString()}`}</div>`;
         if (isUnlocked) { div.onclick = () => { selectedSkin = idx; localStorage.setItem('smileySkin', selectedSkin); renderSkins(); }; }
         container.appendChild(div);
@@ -314,8 +301,7 @@ let audioCtx;
 const soundEnabled = () => document.getElementById('sndToggle').checked;
 function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); }
 function playTone(fs, fe, type, dur, vol=0.1) {
-    if (!soundEnabled() || !audioCtx) return;
-    let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+    if (!soundEnabled() || !audioCtx) return; let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
     osc.type = type; osc.frequency.setValueAtTime(fs, audioCtx.currentTime); if (fe) osc.frequency.exponentialRampToValueAtTime(fe, audioCtx.currentTime + dur);
     gain.gain.setValueAtTime(vol, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
     osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + dur);
@@ -336,8 +322,7 @@ class Entity {
         this.vx = 0; this.vy = 0; this.rotation = 0; this.speedLimit = 280; 
         if (this.isBoss) this.emoji = cwObj.boss; else if (this.isPlayer) this.emoji = ''; else this.emoji = cwObj.emojis[Math.floor(Math.random() * cwObj.emojis.length)];
         this.activeBuffs = { speed: 0, magnet: 0, shield: 0, ghost: 0, vaccine: 0, frenzy: 0 };
-        this.epicBuffs = { singularity: 0, virusLord: 0, aura: 0 };
-        this.level = 1;
+        this.epicBuffs = { singularity: 0, virusLord: 0, aura: 0 }; this.level = 1;
         if (this.isPlayer) { this.numPoints = 20; this.jellyPoints = []; for (let i = 0; i < this.numPoints; i++) this.jellyPoints.push({ r: radius, vr: 0 }); }
     }
     applyJellyImpact(tx, ty, f) {
@@ -365,12 +350,13 @@ class Entity {
     draw(ctx) {
         ctx.save(); ctx.translate(this.x, this.y);
         if (this.isPlayer && this.activeBuffs.ghost > 0) ctx.globalAlpha = 0.4;
-        if (this.epicBuffs.singularity > 0) { ctx.save(); ctx.rotate(performance.now() / 150); ctx.beginPath(); ctx.arc(0, 0, this.r + 50, 0, Math.PI * 2); ctx.setLineDash([15, 30]); ctx.strokeStyle = "#aa00ff"; ctx.lineWidth = 15; ctx.stroke(); ctx.restore(); }
-        if (this.epicBuffs.virusLord > 0) { ctx.save(); ctx.rotate(-performance.now() / 150); ctx.beginPath(); ctx.arc(0, 0, this.r + 40, 0, Math.PI * 2); ctx.setLineDash([50, 20]); ctx.strokeStyle = "#00e676"; ctx.lineWidth = 10; ctx.stroke(); ctx.restore(); }
-        if (this.epicBuffs.aura > 0) { ctx.save(); ctx.beginPath(); ctx.arc(0, 0, this.r + 400, 0, Math.PI * 2); ctx.fillStyle = "rgba(255, 23, 68, 0.15)"; ctx.fill(); ctx.strokeStyle = "rgba(255, 23, 68, 0.8)"; ctx.lineWidth = 4; ctx.stroke(); ctx.restore(); }
-        if (this.activeBuffs.shield > 0) { ctx.save(); ctx.rotate(performance.now() / 300); ctx.beginPath(); ctx.arc(0, 0, this.r + 20, 0, Math.PI * 2); ctx.setLineDash([20, 15]); ctx.strokeStyle = "#00e5ff"; ctx.lineWidth = 6; ctx.stroke(); ctx.restore(); }
-        if (this.activeBuffs.vaccine > 0) { ctx.save(); ctx.rotate(-performance.now() / 250); ctx.beginPath(); ctx.arc(0, 0, this.r + 15, 0, Math.PI * 2); ctx.setLineDash([10, 10]); ctx.strokeStyle = "#76ff03"; ctx.lineWidth = 5; ctx.stroke(); ctx.restore(); }
-        if (this.activeBuffs.frenzy > 0) { ctx.save(); ctx.rotate(performance.now() / 200); ctx.beginPath(); ctx.arc(0, 0, this.r + 25, 0, Math.PI * 2); ctx.setLineDash([30, 20]); ctx.strokeStyle = "#ff1744"; ctx.lineWidth = 5; ctx.stroke(); ctx.restore(); }
+        
+        if (this.epicBuffs.singularity > 0) { ctx.save(); ctx.rotate(performance.now() / 150); ctx.beginPath(); ctx.arc(0, 0, this.r * 1.5, 0, Math.PI * 2); ctx.setLineDash([15, 30]); ctx.strokeStyle = "#aa00ff"; ctx.lineWidth = Math.max(15, this.r*0.1); ctx.stroke(); ctx.restore(); }
+        if (this.epicBuffs.virusLord > 0) { ctx.save(); ctx.rotate(-performance.now() / 150); ctx.beginPath(); ctx.arc(0, 0, this.r * 1.2, 0, Math.PI * 2); ctx.setLineDash([50, 20]); ctx.strokeStyle = "#00e676"; ctx.lineWidth = Math.max(10, this.r*0.08); ctx.stroke(); ctx.restore(); }
+        if (this.epicBuffs.aura > 0) { ctx.save(); ctx.beginPath(); ctx.arc(0, 0, this.r * 2, 0, Math.PI * 2); ctx.fillStyle = "rgba(255, 23, 68, 0.15)"; ctx.fill(); ctx.strokeStyle = "rgba(255, 23, 68, 0.8)"; ctx.lineWidth = Math.max(4, this.r*0.05); ctx.stroke(); ctx.restore(); }
+        if (this.activeBuffs.shield > 0) { ctx.save(); ctx.rotate(performance.now() / 300); ctx.beginPath(); ctx.arc(0, 0, this.r * 1.1, 0, Math.PI * 2); ctx.setLineDash([20, 15]); ctx.strokeStyle = "#00e5ff"; ctx.lineWidth = Math.max(6, this.r*0.06); ctx.stroke(); ctx.restore(); }
+        if (this.activeBuffs.vaccine > 0) { ctx.save(); ctx.rotate(-performance.now() / 250); ctx.beginPath(); ctx.arc(0, 0, this.r * 1.05, 0, Math.PI * 2); ctx.setLineDash([10, 10]); ctx.strokeStyle = "#76ff03"; ctx.lineWidth = Math.max(5, this.r*0.05); ctx.stroke(); ctx.restore(); }
+        if (this.activeBuffs.frenzy > 0) { ctx.save(); ctx.rotate(performance.now() / 200); ctx.beginPath(); ctx.arc(0, 0, this.r * 1.08, 0, Math.PI * 2); ctx.setLineDash([30, 20]); ctx.strokeStyle = "#ff1744"; ctx.lineWidth = Math.max(5, this.r*0.05); ctx.stroke(); ctx.restore(); }
 
         if (this.isPlayer) {
             ctx.rotate(this.rotation); let pts = []; for(let i=0; i<this.numPoints; i++) { let a = (i / this.numPoints) * Math.PI * 2; pts.push({ x: Math.cos(a) * this.jellyPoints[i].r, y: Math.sin(a) * this.jellyPoints[i].r }); }
@@ -385,9 +371,13 @@ class Entity {
         ctx.font = `${this.r * 1.2}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(this.emoji, 0, this.r * 0.05); 
         if (this.isPlayer) { ctx.restore(); ctx.save(); ctx.translate(this.x, this.y); } else { ctx.rotate(-this.rotation); }
         if (this.isPlayer && this.activeBuffs.ghost > 0) ctx.globalAlpha = 0.4;
+        
         ctx.beginPath(); ctx.arc(0, 0, this.r * 0.75, -Math.PI * 0.85, -Math.PI * 0.6); ctx.lineWidth = Math.max(2, this.r * 0.15); ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.stroke();
         ctx.beginPath(); ctx.arc(0, 0, this.r * 0.75, -Math.PI * 0.45, -Math.PI * 0.35); ctx.lineWidth = Math.max(2, this.r * 0.15); ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.stroke();
-        ctx.fillStyle = this.isBoss ? (this.name === 'VULNERABLE' ? '#00e5ff' : '#ff5252') : 'white'; ctx.font = `bold ${Math.max(14, this.r * 0.35)}px sans-serif`; ctx.textAlign = 'center'; ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineWidth = 4; ctx.strokeText(this.name, 0, -this.r - 20); ctx.fillText(this.name, 0, -this.r - 20);
+        
+        ctx.fillStyle = this.isBoss ? (this.name === 'VULNERABLE' ? '#00e5ff' : '#ff5252') : 'white'; 
+        ctx.font = `bold ${Math.max(14, this.r * 0.35)}px sans-serif`; ctx.textAlign = 'center'; ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineWidth = Math.max(4, this.r*0.05); 
+        ctx.strokeText(this.name, 0, -this.r - (this.r*0.3)); ctx.fillText(this.name, 0, -this.r - (this.r*0.3));
         ctx.restore();
     }
 }
@@ -397,14 +387,14 @@ class AI extends Entity {
     update(dt) {
         if (this.isBoss && player) {
             let minBossSize = player.targetR * 0.4; if (this.targetR > minBossSize) this.targetR -= this.targetR * 0.02 * dt; 
-            if (this.targetR <= player.targetR * 1.05 && this.emoji !== '🥶') { this.emoji = '🥶'; this.name = 'VULNERABLE'; createParticles(this.x, this.y, '#00e5ff', 30, 2); createFloatingText("NOW EAT IT!", this.x, this.y - 100, "#00e5ff"); }
+            if (this.targetR <= player.targetR * 1.05 && this.emoji !== '🥶') { this.emoji = '🥶'; this.name = 'VULNERABLE'; createParticles(this.x, this.y, '#00e5ff', 30, 2, this.r*0.1); createFloatingText("NOW EAT IT!", this.x, this.y - this.r, "#00e5ff", this.r*0.4); }
         }
         this.changeDirTimer -= dt;
         if (this.changeDirTimer <= 0) {
             let a, sm, tr;
             if (this.isBoss) {
                 let dx = player.x - this.x; let dy = player.y - this.y; let dSq = dx*dx + dy*dy;
-                if (this.targetR >= player.targetR) { a = Math.atan2(dy, dx); sm = 0.85; tr = 0.5; } else { if (dSq < 1000 * 1000) { a = Math.atan2(dy, dx) + Math.PI; sm = 0.95; tr = 0.5; } else { a = Math.random() * Math.PI * 2; sm = 0.6; tr = 1 + Math.random() * 2; } }
+                if (this.targetR >= player.targetR) { a = Math.atan2(dy, dx); sm = 0.85; tr = 0.5; } else { if (dSq < (player.r*10)**2) { a = Math.atan2(dy, dx) + Math.PI; sm = 0.95; tr = 0.5; } else { a = Math.random() * Math.PI * 2; sm = 0.6; tr = 1 + Math.random() * 2; } }
             } else { a = Math.random() * Math.PI * 2; sm = 0.6; tr = 1 + Math.random() * 3; }
             let csl = this.speedLimit * Math.pow(20 / Math.max(20, this.r), 0.08); this.vx = Math.cos(a) * csl * sm; this.vy = Math.sin(a) * csl * sm; this.changeDirTimer = tr; 
         }
@@ -419,13 +409,10 @@ function initWorld() {
     bgParticles = []; pellets = []; entities = [player]; particles = []; shockwaves = []; viruses = [];
     
     for (let i = 0; i < 300; i++) {
-        let pos = getSpawnPos(0, 3000);
-        let speed = Math.random()*2+0.5;
-        let vx = 0, vy = 0;
+        let pos = getSpawnPos(0, 3000); let speed = Math.random()*2+0.5; let vx = 0, vy = 0;
         if (cwObj.bg === 'cyber' || cwObj.bg === 'forest' || cwObj.bg === 'candy' || cwObj.bg === 'ice') vy = speed*2;
         if (cwObj.bg === 'ocean' || cwObj.bg === 'lava' || cwObj.bg === 'heaven') vy = -speed*2;
         if (cwObj.bg === 'forest') vx = speed; if (cwObj.bg === 'ice') vx = speed/2; if (cwObj.bg === 'graveyard') vx = speed*3;
-        
         bgParticles.push({ x: pos.x, y: pos.y, r: Math.random() * 2.5 + 1.5, speed: speed, offset: Math.random()*Math.PI*2, char: Math.random()>0.5?'1':'0', vx:vx, vy:vy });
     }
     for (let i = 0; i < 400; i++) pellets.push({ ...getSpawnPos(0, 2500), r: 4 + Math.random()*5, hue: Math.floor(Math.random()*360) });
@@ -434,30 +421,58 @@ function initWorld() {
 }
 
 function maintainInfiniteWorld() {
-    let maxDistSq = Math.pow(Math.max((cw / camera.zoom) / 2, (ch / camera.zoom) / 2) + 800, 2);
-    pellets.forEach(p => { let dSq = (p.x-player.x)**2 + (p.y-player.y)**2; if (dSq > maxDistSq) { let pos = getSpawnPos(Math.sqrt(maxDistSq)-200, Math.sqrt(maxDistSq)+200); p.x = pos.x; p.y = pos.y; } });
-    bgParticles.forEach(s => { let dSq = (s.x-player.x)**2 + (s.y-player.y)**2; if (dSq > maxDistSq+1000000) { let pos = getSpawnPos(Math.sqrt(maxDistSq), Math.sqrt(maxDistSq)+500); s.x = pos.x; s.y = pos.y; } });
-    viruses.forEach(v => { let dSq = (v.x-player.x)**2 + (v.y-player.y)**2; if (dSq > maxDistSq+2000000) { let pos = getSpawnPos(Math.sqrt(maxDistSq)+200, Math.sqrt(maxDistSq)+800); v.x=pos.x; v.y=pos.y; v.r=Math.max(60, player.targetR*0.2)+Math.random()*(player.targetR*0.2); } });
-    entities.forEach(e => { if (!e.isPlayer) { let dSq = (e.x-player.x)**2 + (e.y-player.y)**2; if (dSq > maxDistSq+2000000) { let pos = getSpawnPos(Math.sqrt(maxDistSq), Math.sqrt(maxDistSq)+800); e.x=pos.x; e.y=pos.y; if (!e.isBoss) { e.r=Math.max(15, player.targetR*0.15)+Math.random()*(player.targetR*0.6); e.targetR=e.r; } } } });
+    let vRad = Math.max((cw / camera.zoom) / 2, (ch / camera.zoom) / 2);
+    let maxDistSq = Math.pow(vRad + 800, 2);
+    
+    pellets.forEach(p => { let dSq = (p.x-player.x)**2 + (p.y-player.y)**2; if (dSq > maxDistSq) { let pos = getSpawnPos(vRad-200, vRad+200); p.x = pos.x; p.y = pos.y; } });
+    bgParticles.forEach(s => { let dSq = (s.x-player.x)**2 + (s.y-player.y)**2; if (dSq > Math.pow(vRad+1500, 2)) { let pos = getSpawnPos(vRad, vRad+500); s.x = pos.x; s.y = pos.y; } });
+    viruses.forEach(v => { let dSq = (v.x-player.x)**2 + (v.y-player.y)**2; if (dSq > Math.pow(vRad+2000, 2)) { let pos = getSpawnPos(vRad+200, vRad+800); v.x=pos.x; v.y=pos.y; v.r=Math.max(60, player.targetR*0.2)+Math.random()*(player.targetR*0.2); } });
+    entities.forEach(e => { if (!e.isPlayer) { let dSq = (e.x-player.x)**2 + (e.y-player.y)**2; if (dSq > Math.pow(vRad+2000, 2)) { let pos = getSpawnPos(vRad, vRad+800); e.x=pos.x; e.y=pos.y; if (!e.isBoss) { e.r=Math.max(15, player.targetR*0.15)+Math.random()*(player.targetR*0.6); e.targetR=e.r; } } } });
 }
 
 function spawnBoss() {
-    let pos = getSpawnPos(1500, 2000); let boss = new AI(pos.x, pos.y, player.targetR * 1.5, 0, cwObj.bName, true); entities.push(boss);
-    createShockwave(pos.x, pos.y, '#ff5252', 1500); createFloatingText(`⚠️ ${cwObj.bName} DETECTED! ⚠️`, player.x, player.y - 200, "#ff1744"); playSound('virus');
+    let vRad = Math.max((cw / camera.zoom) / 2, (ch / camera.zoom) / 2);
+    let pos = getSpawnPos(vRad + 500, vRad + 1000); 
+    let boss = new AI(pos.x, pos.y, player.targetR * 1.5, 0, cwObj.bName, true); entities.push(boss);
+    createShockwave(pos.x, pos.y, '#ff5252', player.r*3); createFloatingText(`⚠️ ${cwObj.bName} DETECTED! ⚠️`, player.x, player.y - player.r*1.5, "#ff1744", Math.max(26, player.r*0.5)); playSound('virus');
 }
 
-function createParticles(x, y, colorStr, count, speedMult = 1) { for (let i = 0; i < count; i++) { let a = Math.random() * Math.PI * 2; let s = (Math.random() * 300 + 100) * speedMult; particles.push({ x: x, y: y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, r: Math.random()*6+3, color: colorStr, life: 1.0, maxLife: 1.0 }); } }
-function createFloatingText(text, x, y, color) { floatingTexts.push({ text: text, x: x, y: y, life: 1.5, color: color }); }
+function createParticles(x, y, colorStr, count, speedMult = 1, baseScale = 1) { 
+    for (let i = 0; i < count; i++) { 
+        let a = Math.random() * Math.PI * 2; let s = (Math.random() * 300 + 100) * speedMult * (baseScale/3); 
+        particles.push({ x: x, y: y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, r: (Math.random()*6+3)*baseScale, color: colorStr, life: 1.0, maxLife: 1.0 }); 
+    } 
+}
+function createFloatingText(text, x, y, color, size=26) { floatingTexts.push({ text: text, x: x, y: y, life: 1.5, color: color, size: size }); }
 function createShockwave(x, y, color, maxRadius = 400) { shockwaves.push({ x: x, y: y, r: 10, maxR: maxRadius, life: 1.0, color: color }); }
 
+// ИСПРАВЛЕНО: Теперь уровень пересчитывается корректно за 1 кадр и не спамит меню Level Up!
+function checkLevelUp() {
+    let expectedLevel = Math.floor((player.targetR - 20) / 30) + 1;
+    if (expectedLevel > player.level) {
+        player.level = expectedLevel; // Сразу прыгаем на реальный уровень
+        playSound('levelup'); createShockwave(player.x, player.y, '#ffd54f', player.r * 2);
+        let shuffled = [...SKILL_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
+        let container = document.getElementById('skillsChoices'); container.innerHTML = '';
+        shuffled.forEach(s => { let div = document.createElement('div'); div.className = 'skill-card'; div.onclick = () => applySkill(s.id); div.innerHTML = `<div class="skill-icon">${s.icon}</div><div class="skill-name">${s.name}</div><div class="skill-desc">${s.desc}</div>`; container.appendChild(div); });
+        gameState = 'LEVEL_UP'; document.getElementById('level-up-menu').classList.remove('hidden');
+    }
+    updateHUD();
+}
+
 function checkCollisions(dt) {
+    let vRad = Math.max((cw / camera.zoom) / 2, (ch / camera.zoom) / 2);
     for (let i = 0; i < entities.length; i++) {
-        let ent = entities[i]; let mR = ent.activeBuffs.magnet > 0 ? ent.r + 300 : ent.r; if (ent.isPlayer && ent.epicBuffs.singularity > 0) mR = ent.r + 1000;
+        let ent = entities[i]; let mR = ent.activeBuffs.magnet > 0 ? ent.r * 2.5 : ent.r; if (ent.isPlayer && ent.epicBuffs.singularity > 0) mR = ent.r * 3;
         let mRSq = mR*mR; let eRSq = ent.r*ent.r;
         for (let j = pellets.length - 1; j >= 0; j--) {
             let p = pellets[j]; let dSq = (ent.x-p.x)**2 + (ent.y-p.y)**2;
             if (dSq < mRSq && (ent.activeBuffs.magnet > 0 || (ent.isPlayer && ent.epicBuffs.singularity > 0))) { p.x += (ent.x-p.x)*0.15; p.y += (ent.y-p.y)*0.15; }
-            if (dSq < eRSq) { ent.targetR += 15 / ent.targetR; if (ent.isPlayer) { ent.applyJellyImpact(p.x, p.y, 10); playSound('pellet'); checkLevelUp(); } let pos = getSpawnPos((cw/camera.zoom)/2, (cw/camera.zoom)/2+500); p.x=pos.x; p.y=pos.y; }
+            if (dSq < eRSq) { 
+                ent.targetR += 15 / ent.targetR; 
+                if (ent.isPlayer) { ent.applyJellyImpact(p.x, p.y, 10); playSound('pellet'); checkLevelUp(); } 
+                let pos = getSpawnPos(vRad, vRad+500); p.x=pos.x; p.y=pos.y; 
+            }
         }
     }
     for (let i = 0; i < entities.length; i++) {
@@ -465,9 +480,9 @@ function checkCollisions(dt) {
         for (let v of viruses) {
             if ((ent.x-v.x)**2 + (ent.y-v.y)**2 < (ent.r+v.r-10)**2) {
                 if (ent.r > v.r * 1.1) {
-                    if (ent.isPlayer && (ent.activeBuffs.vaccine > 0 || ent.epicBuffs.virusLord > 0)) { ent.targetR = Math.sqrt(ent.targetR**2 + v.r**2 * 0.8); playSound('eat'); createShockwave(ent.x, ent.y, cwObj.vCol, ent.r*2); createFloatingText("💉 YUMMY!", ent.x, ent.y, cwObj.vCol); let pos = getSpawnPos(2000, 3000); v.x=pos.x; v.y=pos.y; } 
+                    if (ent.isPlayer && (ent.activeBuffs.vaccine > 0 || ent.epicBuffs.virusLord > 0)) { ent.targetR = Math.sqrt(ent.targetR**2 + v.r**2 * 0.8); playSound('eat'); createShockwave(ent.x, ent.y, cwObj.vCol, ent.r*2); createFloatingText("💉 YUMMY!", ent.x, ent.y, cwObj.vCol, Math.max(26, ent.r*0.4)); let pos = getSpawnPos(vRad+200, vRad+1000); v.x=pos.x; v.y=pos.y; } 
                     else if (ent.isPlayer && ent.activeBuffs.ghost > 0) { } 
-                    else { ent.targetR *= 0.6; playSound('virus'); createShockwave(ent.x, ent.y, cwObj.vCol, 600); createFloatingText("💥 VIRUS!", ent.x, ent.y, cwObj.vCol); for(let k=0; k<20; k++) { let a=Math.random()*Math.PI*2; pellets.push({ x:ent.x+Math.cos(a)*ent.r, y:ent.y+Math.sin(a)*ent.r, r:8, hue:ent.hue }); } let pos = getSpawnPos(2000, 3000); v.x=pos.x; v.y=pos.y; }
+                    else { ent.targetR *= 0.6; playSound('virus'); createShockwave(ent.x, ent.y, cwObj.vCol, ent.r*2); createFloatingText("💥 VIRUS!", ent.x, ent.y, cwObj.vCol, Math.max(26, ent.r*0.4)); for(let k=0; k<20; k++) { let a=Math.random()*Math.PI*2; pellets.push({ x:ent.x+Math.cos(a)*ent.r, y:ent.y+Math.sin(a)*ent.r, r:8, hue:ent.hue }); } let pos = getSpawnPos(vRad+200, vRad+1000); v.x=pos.x; v.y=pos.y; }
                 }
             }
         }
@@ -479,13 +494,13 @@ function checkCollisions(dt) {
                 let eater, eaten, idx; if (e1.r > e2.r * 1.1) { eater=e1; eaten=e2; idx=j; } else if (e2.r > e1.r * 1.1) { eater=e2; eaten=e1; idx=i; }
                 if (eater && eaten) {
                     if (eaten.isPlayer && eaten.activeBuffs.ghost > 0) continue; 
-                    if (eaten.activeBuffs.shield > 0) { eaten.activeBuffs.shield=0; eaten.vx=dx*(eater===e1?-15:15); eaten.vy=dy*(eater===e1?-15:15); createParticles(eaten.x, eaten.y, "#00e5ff", 30, 3); createShockwave(eaten.x, eaten.y, "#00e5ff", 250); createFloatingText("BLOCKED!", eaten.x, eaten.y, "#00e5ff"); continue; }
+                    if (eaten.activeBuffs.shield > 0) { eaten.activeBuffs.shield=0; eaten.vx=dx*(eater===e1?-15:15); eaten.vy=dy*(eater===e1?-15:15); createParticles(eaten.x, eaten.y, "#00e5ff", 30, 3, eaten.r*0.1); createShockwave(eaten.x, eaten.y, "#00e5ff", eaten.r*2); createFloatingText("BLOCKED!", eaten.x, eaten.y, "#00e5ff", Math.max(26, eaten.r*0.4)); continue; }
                     if (eater.isPlayer) eater.applyJellyImpact(eaten.x, eaten.y, eaten.r * 0.8); eater.targetR = Math.sqrt(eater.targetR**2 + eaten.r**2 * 0.7);
-                    createParticles(eaten.x, eaten.y, `hsl(${eaten.hue}, 80%, 50%)`, 30, 3); createShockwave(eaten.x, eaten.y, `hsl(${eater.hue}, 80%, 60%)`, eater.r * 2);
+                    createParticles(eaten.x, eaten.y, `hsl(${eaten.hue}, 80%, 50%)`, 30, 3, eaten.r*0.1); createShockwave(eaten.x, eaten.y, `hsl(${eater.hue}, 80%, 60%)`, eater.r * 2);
                     if (eater.isPlayer || eaten.isPlayer) playSound('eat');
-                    if (eater.isPlayer && eaten.isBoss) { createFloatingText("👑 BOSS SLAIN!", eaten.x, eaten.y, "#ff1744"); pendingBossReward=true; } 
-                    else if (eater.isPlayer) { createFloatingText(eaten.emoji+" CHOMP!", eaten.x, eaten.y, "#ffd54f"); checkLevelUp(); }
-                    entities.splice(idx, 1); if (entities.length < 25) { let pos = getSpawnPos(1500, 2500); entities.push(new AI(pos.x, pos.y, Math.max(15, player.targetR*0.15) + Math.random()*(player.targetR*0.6), Math.floor(Math.random()*360), "Bot")); }
+                    if (eater.isPlayer && eaten.isBoss) { createFloatingText("👑 BOSS SLAIN!", eaten.x, eaten.y, "#ff1744", Math.max(26, eater.r*0.4)); pendingBossReward=true; } 
+                    else if (eater.isPlayer) { createFloatingText(eaten.emoji+" CHOMP!", eaten.x, eaten.y, "#ffd54f", Math.max(26, eater.r*0.3)); checkLevelUp(); }
+                    entities.splice(idx, 1); if (entities.length < 25) { let pos = getSpawnPos(vRad, vRad+1000); entities.push(new AI(pos.x, pos.y, Math.max(15, player.targetR*0.15) + Math.random()*(player.targetR*0.6), Math.floor(Math.random()*360), "Bot")); }
                     if (eaten.isPlayer) gameOver(); break;
                 }
             }
@@ -494,8 +509,7 @@ function checkCollisions(dt) {
 }
 
 function triggerAscension() {
-    if (gameState !== 'PLAYING') return;
-    playSound('levelup'); createShockwave(player.x, player.y, '#aa00ff', 5000);
+    if (gameState !== 'PLAYING') return; playSound('levelup'); createShockwave(player.x, player.y, '#aa00ff', player.r*10);
     gameState = 'GAMEOVER'; let finalMass = Math.floor(player.targetR * 10); activeTouchId = null; joystick.active = false;
     totalScore += finalMass; prestigeCount++; localStorage.setItem('smileyTotalScore', totalScore.toString()); localStorage.setItem('smileyPrestige', prestigeCount.toString());
     document.getElementById('finalScore').innerText = "+" + finalMass.toLocaleString(); document.getElementById('finalScore').style.color = '#aa00ff'; document.getElementById('ascendBtn').classList.add('hidden');
@@ -504,21 +518,8 @@ function triggerAscension() {
     updateMenuStats(); showMenu('game-over-menu'); document.getElementById('gameOverTitle').innerText = "🌌 UNIVERSE DEVOURED! 🌌"; document.getElementById('gameOverTitle').style.color = "#aa00ff";
 }
 
-function triggerBossReward() { playSound('levelup'); createShockwave(player.x, player.y, '#ff1744', 3000); gameState = 'BOSS_REWARD'; document.getElementById('boss-reward-menu').classList.remove('hidden'); joystick.active = false; }
+function triggerBossReward() { playSound('levelup'); createShockwave(player.x, player.y, '#ff1744', player.r*4); gameState = 'BOSS_REWARD'; document.getElementById('boss-reward-menu').classList.remove('hidden'); joystick.active = false; }
 function applyBossSkill(type) { player.epicBuffs[type] = 15; dashCooldown = 0; document.getElementById('boss-reward-menu').classList.add('hidden'); gameState = 'PLAYING'; lastTime = performance.now(); }
-
-// ИЗМЕНЕНИЕ: Теперь кнопка победы появляется после 300-го уровня
-function checkLevelUp() {
-    let nextThreshold = player.level * 30 + 20;
-    if (player.targetR > nextThreshold) {
-        player.level++; playSound('levelup'); createShockwave(player.x, player.y, '#ffd54f', 800);
-        let shuffled = [...SKILL_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
-        let container = document.getElementById('skillsChoices'); container.innerHTML = '';
-        shuffled.forEach(s => { let div = document.createElement('div'); div.className = 'skill-card'; div.onclick = () => applySkill(s.id); div.innerHTML = `<div class="skill-icon">${s.icon}</div><div class="skill-name">${s.name}</div><div class="skill-desc">${s.desc}</div>`; container.appendChild(div); });
-        gameState = 'LEVEL_UP'; document.getElementById('level-up-menu').classList.remove('hidden');
-    }
-    updateHUD();
-}
 function applySkill(type) { player.activeBuffs[type] = 7; document.getElementById('level-up-menu').classList.add('hidden'); gameState = 'PLAYING'; lastTime = performance.now(); }
 
 function doDash() {
@@ -527,35 +528,44 @@ function doDash() {
     playSound('dash'); dashCooldown = isFrenzy ? 0.2 : 1.0; if (!isFrenzy) player.targetR *= 0.9; 
     if (player.epicBuffs.virusLord > 0) viruses.push({ x: player.x, y: player.y, r: Math.max(50, player.targetR * 0.15) + Math.random()*20, rotation: 0 });
     let dashForce = 1500 + (player.r * 2); let speedSq = player.vx*player.vx + player.vy*player.vy;
-    if (speedSq > 100) { let speed = Math.sqrt(speedSq); player.vx += (player.vx / speed) * dashForce; player.vy += (player.vy / speed) * dashForce; } 
-    else { let ang = Math.random() * Math.PI*2; player.vx += Math.cos(ang)*dashForce; player.vy += Math.sin(ang)*dashForce; }
-    createParticles(player.x, player.y, isFrenzy ? '#ff1744' : '#ff9100', 40, 4); createShockwave(player.x, player.y, isFrenzy ? '#ff1744' : '#ff9100', player.r*3);
+    if (speedSq > 100) { let speed = Math.sqrt(speedSq); player.vx += (player.vx / speed) * dashForce; player.vy += (player.vy / speed) * dashForce; } else { let ang = Math.random() * Math.PI*2; player.vx += Math.cos(ang)*dashForce; player.vy += Math.sin(ang)*dashForce; }
+    createParticles(player.x, player.y, isFrenzy ? '#ff1744' : '#ff9100', 40, 4, Math.max(1, player.r/20)); createShockwave(player.x, player.y, isFrenzy ? '#ff1744' : '#ff9100', player.r*3);
 }
 
+// ИСПРАВЛЕНО: Бесконечное отдаление камеры без лагов сетки
 function drawBackground() {
     ctx.clearRect(0, 0, cw, ch); ctx.save(); ctx.translate(cw / 2, ch / 2); ctx.scale(camera.zoom, camera.zoom); ctx.translate(-camera.x, -camera.y);
     let vDX = (cw / camera.zoom)/2 + 100; let vDY = (ch / camera.zoom)/2 + 100; let tS = Date.now() / 1000;
 
     bgParticles.forEach(s => {
         s.x += s.vx; s.y += s.vy;
-        if (Math.abs(s.x - camera.x) > vDX || Math.abs(s.y - camera.y) > vDY) return;
+        // Закольцовываем частицы вокруг камеры, чтобы они не терялись при отдалении
+        let cx = camera.x, cy = camera.y;
+        if (s.x < cx - vDX) s.x += vDX*2; if (s.x > cx + vDX) s.x -= vDX*2;
+        if (s.y < cy - vDY) s.y += vDY*2; if (s.y > cy + vDY) s.y -= vDY*2;
+
         let alpha = 0.2 + Math.abs(Math.sin(tS * s.speed + s.offset)) * 0.5;
+        let sr = s.r / camera.zoom; // Чтобы частицы оставались визуально одного размера
         
-        if (cwObj.bg === 'space') { ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fillRect(s.x-s.r, s.y-s.r, s.r*2, s.r*2); }
-        else if (cwObj.bg === 'cyber') { ctx.fillStyle = `rgba(0, 229, 255, ${alpha})`; ctx.font = `${s.r*8}px monospace`; ctx.fillText(s.char, s.x, s.y); }
-        else if (cwObj.bg === 'ocean') { ctx.strokeStyle = `rgba(100, 200, 255, ${alpha})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.r*2, 0, Math.PI*2); ctx.stroke(); }
-        else if (cwObj.bg === 'forest') { ctx.fillStyle = `rgba(100, 255, 100, ${alpha})`; s.x += Math.sin(tS*s.speed)*2; ctx.beginPath(); ctx.ellipse(s.x, s.y, s.r, s.r*2, s.offset, 0, Math.PI*2); ctx.fill(); }
-        else if (cwObj.bg === 'lava') { ctx.fillStyle = `rgba(255, 100, 0, ${alpha})`; ctx.fillRect(s.x-s.r, s.y-s.r, s.r*2, s.r*2); }
-        else if (cwObj.bg === 'candy') { ctx.strokeStyle = `hsla(${s.r*100}, 100%, 70%, ${alpha})`; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x, s.y+s.r*4); ctx.stroke(); }
-        else if (cwObj.bg === 'ice') { ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`; s.x += Math.sin(tS)*1; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill(); }
-        else if (cwObj.bg === 'graveyard') { ctx.fillStyle = `rgba(100, 100, 100, ${alpha*0.5})`; ctx.fillRect(s.x, s.y, s.r*30, s.r*2); }
-        else if (cwObj.bg === 'arcade') { ctx.fillStyle = s.char==='1'?`rgba(255,0,255,${alpha})`:`rgba(0,255,255,${alpha})`; ctx.fillRect(s.x, s.y, s.r*3, s.r*3); }
-        else if (cwObj.bg === 'heaven') { ctx.fillStyle = `rgba(255, 230, 100, ${alpha})`; ctx.shadowBlur = 15; ctx.shadowColor = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r*2, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; }
+        if (cwObj.bg === 'space') { ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fillRect(s.x-sr, s.y-sr, sr*2, sr*2); }
+        else if (cwObj.bg === 'cyber') { ctx.fillStyle = `rgba(0, 229, 255, ${alpha})`; ctx.font = `${sr*8}px monospace`; ctx.fillText(s.char, s.x, s.y); }
+        else if (cwObj.bg === 'ocean') { ctx.strokeStyle = `rgba(100, 200, 255, ${alpha})`; ctx.beginPath(); ctx.arc(s.x, s.y, sr*2, 0, Math.PI*2); ctx.stroke(); }
+        else if (cwObj.bg === 'forest') { ctx.fillStyle = `rgba(100, 255, 100, ${alpha})`; s.x += Math.sin(tS*s.speed)*2; ctx.beginPath(); ctx.ellipse(s.x, s.y, sr, sr*2, s.offset, 0, Math.PI*2); ctx.fill(); }
+        else if (cwObj.bg === 'lava') { ctx.fillStyle = `rgba(255, 100, 0, ${alpha})`; ctx.fillRect(s.x-sr, s.y-sr, sr*2, sr*2); }
+        else if (cwObj.bg === 'candy') { ctx.strokeStyle = `hsla(${s.r*100}, 100%, 70%, ${alpha})`; ctx.lineWidth=3/camera.zoom; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x, s.y+sr*4); ctx.stroke(); }
+        else if (cwObj.bg === 'ice') { ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`; s.x += Math.sin(tS)*1; ctx.beginPath(); ctx.arc(s.x, s.y, sr, 0, Math.PI*2); ctx.fill(); }
+        else if (cwObj.bg === 'graveyard') { ctx.fillStyle = `rgba(100, 100, 100, ${alpha*0.5})`; ctx.fillRect(s.x, s.y, sr*30, sr*2); }
+        else if (cwObj.bg === 'arcade') { ctx.fillStyle = s.char==='1'?`rgba(255,0,255,${alpha})`:`rgba(0,255,255,${alpha})`; ctx.fillRect(s.x, s.y, sr*3, sr*3); }
+        else if (cwObj.bg === 'heaven') { ctx.fillStyle = `rgba(255, 230, 100, ${alpha})`; ctx.shadowBlur = 15; ctx.shadowColor = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, sr*2, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; }
     });
 
-    ctx.strokeStyle = `rgba(255, 255, 255, 0.05)`; ctx.lineWidth = 2;
+    ctx.strokeStyle = `rgba(255, 255, 255, 0.05)`; ctx.lineWidth = Math.max(2, 2/camera.zoom);
     if (cwObj.bg==='cyber') ctx.strokeStyle='rgba(255,23,68,0.1)'; if (cwObj.bg==='lava') ctx.strokeStyle='rgba(255,100,0,0.1)'; if (cwObj.bg==='arcade') ctx.strokeStyle='rgba(213,0,249,0.1)';
-    let gridSize = 300; let startX = Math.floor((camera.x - vDX) / gridSize) * gridSize; let startY = Math.floor((camera.y - vDY) / gridSize) * gridSize;
+    
+    // Динамическая сетка: предотвращает зависание при бесконечном отдалении
+    let gridSize = 300; while(gridSize * camera.zoom < 50) gridSize *= 2; 
+    
+    let startX = Math.floor((camera.x - vDX) / gridSize) * gridSize; let startY = Math.floor((camera.y - vDY) / gridSize) * gridSize;
     ctx.beginPath(); for (let x = startX; x < camera.x + vDX; x += gridSize) { ctx.moveTo(x, camera.y - vDY); ctx.lineTo(x, camera.y + vDY); } for (let y = startY; y < camera.y + vDY; y += gridSize) { ctx.moveTo(camera.x - vDX, y); ctx.lineTo(camera.x + vDX, y); } ctx.stroke();
     ctx.restore();
 }
@@ -571,7 +581,6 @@ function drawPellet(ctx, p, shape) {
     else if (shape === 'hexagon') { for(let i=0; i<6; i++) { let a = i*Math.PI/3; ctx.lineTo(p.x+Math.cos(a)*p.r, p.y+Math.sin(a)*p.r); } ctx.fill(); }
 }
 
-let bossTimer = 0;
 function gameLoop(timestamp) {
     if (!lastTime) lastTime = timestamp; let realDt = (timestamp - lastTime) / 1000; lastTime = timestamp; if (realDt > 0.1) realDt = 0.1;
     let gameSpeed = 1 + Math.max(0, player ? (player.r - 20) : 0) * 0.002; gameSpeed = Math.min(gameSpeed, 2.5); let dt = realDt * gameSpeed;
@@ -582,13 +591,19 @@ function gameLoop(timestamp) {
         if(!isFrenzy && (dashCooldown > 0 || player.targetR <= 20)) { btn.style.opacity = '0.5'; btn.style.filter = 'grayscale(1)'; } else { btn.style.opacity = '1'; btn.style.filter = isFrenzy ? 'hue-rotate(320deg) brightness(1.5)' : 'none'; }
         entities.forEach(e => e.update(dt)); maintainInfiniteWorld(); checkCollisions(dt);
         if (pendingBossReward) { pendingBossReward = false; triggerBossReward(); }
-        if (player && player.epicBuffs.singularity > 0) { entities.forEach(e => { if (e !== player && e.r < player.r) { let dx=player.x-e.x; let dy=player.y-e.y; let dSq=dx*dx+dy*dy; let range=player.r+1000; if (dSq<range*range && dSq>0) { let pull=300*dt; e.x+=(dx/Math.sqrt(dSq))*pull; e.y+=(dy/Math.sqrt(dSq))*pull; } } }); }
-        if (player && player.epicBuffs.aura > 0) { entities.forEach(e => { if (e !== player) { let dx=player.x-e.x; let dy=player.y-e.y; let dSq=dx*dx+dy*dy; let range=player.r+400; if (dSq<range*range) { e.targetR-=40*dt; player.targetR+=15*dt; if (Math.random()<0.1) createParticles(e.x, e.y, '#ff1744', 1, 3); if (e.targetR<10) e.targetR=10; } } }); }
+        
+        // Масштабирование мощностей для огромных размеров
+        if (player && player.epicBuffs.singularity > 0) { entities.forEach(e => { if (e !== player && e.r < player.r) { let dx=player.x-e.x; let dy=player.y-e.y; let dSq=dx*dx+dy*dy; let range=player.r*2.5; if (dSq<range*range && dSq>0) { let pull=500*dt*(player.r/20); e.x+=(dx/Math.sqrt(dSq))*pull; e.y+=(dy/Math.sqrt(dSq))*pull; } } }); }
+        if (player && player.epicBuffs.aura > 0) { entities.forEach(e => { if (e !== player) { let dx=player.x-e.x; let dy=player.y-e.y; let dSq=dx*dx+dy*dy; let range=player.r*2; if (dSq<range*range) { e.targetR-=40*dt*(player.r/50); player.targetR+=15*dt*(player.r/50); if (Math.random()<0.1) createParticles(e.x, e.y, '#ff1744', 1, 3, Math.max(1, e.r/20)); if (e.targetR<10) e.targetR=10; } } }); }
+        
         for (let i=particles.length-1; i>=0; i--) { let p = particles[i]; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.94; p.vy*=0.94; p.life-=dt; if (p.life<=0) particles.splice(i, 1); }
         for (let i=floatingTexts.length-1; i>=0; i--) { floatingTexts[i].y-=60*dt; floatingTexts[i].life-=dt; if (floatingTexts[i].life<=0) floatingTexts.splice(i, 1); }
         for (let i=shockwaves.length-1; i>=0; i--) { shockwaves[i].r+=(shockwaves[i].maxR-shockwaves[i].r)*5*dt; shockwaves[i].life-=dt; if (shockwaves[i].life<=0) shockwaves.splice(i, 1); }
         let bossExists = entities.some(e => e.isBoss); if (!bossExists) { bossTimer += realDt; if (bossTimer > 60) { spawnBoss(); bossTimer = 0; } }
-        camera.zoom += (Math.max(0.2, 60 / Math.max(20, player.r)) - camera.zoom) * 4 * realDt;
+        
+        // Камера откреплена от максимального масштаба, теперь вы можете быть размером с вселенную
+        let targetZoom = 60 / Math.max(20, player.r);
+        camera.zoom += (targetZoom - camera.zoom) * 4 * realDt;
         camera.x += (player.x - camera.x) * 6 * realDt; camera.y += (player.y - camera.y) * 6 * realDt;
         updateHUD(); updateLeaderboard();
     }
@@ -602,9 +617,10 @@ function gameLoop(timestamp) {
         pellets.forEach(p => { if (Math.abs(p.x - camera.x) > vX || Math.abs(p.y - camera.y) > vY) return; drawPellet(ctx, p, cwObj.pell); });
         viruses.forEach(v => { if (Math.abs(v.x - camera.x) > vX+v.r || Math.abs(v.y - camera.y) > vY+v.r) return; v.rotation += 0.5*dt; ctx.save(); ctx.translate(v.x, v.y); ctx.rotate(v.rotation); let s = v.r/90; ctx.scale(s,s); ctx.drawImage(virusCache[cwObj.id], -100, -100); ctx.restore(); });
         entities.sort((a, b) => a.r - b.r); entities.forEach(e => { if (Math.abs(e.x - camera.x) > vX+e.r || Math.abs(e.y - camera.y) > vY+e.r) return; e.draw(ctx); });
-        shockwaves.forEach(sw => { ctx.globalAlpha = Math.max(0, sw.life); ctx.beginPath(); ctx.arc(sw.x, sw.y, sw.r, 0, Math.PI*2); ctx.strokeStyle = sw.color; ctx.lineWidth = 4 + (sw.life * 6); ctx.stroke(); });
+        shockwaves.forEach(sw => { ctx.globalAlpha = Math.max(0, sw.life); ctx.beginPath(); ctx.arc(sw.x, sw.y, sw.r, 0, Math.PI*2); ctx.strokeStyle = sw.color; ctx.lineWidth = Math.max(4, sw.r*0.02) + (sw.life * 6); ctx.stroke(); });
         particles.forEach(p => { let alpha = Math.max(0, p.life/p.maxLife); ctx.globalAlpha = alpha; ctx.fillStyle = p.color; ctx.fillRect(p.x-p.r, p.y-p.r, p.r*2*alpha, p.r*2*alpha); });
-        ctx.globalAlpha = 1.0; floatingTexts.forEach(ft => { ctx.globalAlpha = Math.max(0, ft.life/1.5); ctx.fillStyle = ft.color; ctx.font = "900 26px Arial"; ctx.textAlign = "center"; ctx.lineWidth = 4; ctx.strokeStyle = "#000"; ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillText(ft.text, ft.x, ft.y); }); ctx.globalAlpha = 1.0; ctx.restore();
+        
+        ctx.globalAlpha = 1.0; floatingTexts.forEach(ft => { ctx.globalAlpha = Math.max(0, ft.life/1.5); ctx.fillStyle = ft.color; ctx.font = `900 ${ft.size}px Arial`; ctx.textAlign = "center"; ctx.lineWidth = Math.max(2, ft.size/6); ctx.strokeStyle = "#000"; ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillText(ft.text, ft.x, ft.y); }); ctx.globalAlpha = 1.0; ctx.restore();
 
         entities.forEach(e => {
             if (e.isBoss) {
@@ -638,7 +654,6 @@ function gameOver() {
     updateMenuStats(); showMenu('game-over-menu');
 }
 
-// ИЗМЕНЕНИЕ: Порог Большого Взрыва (Prestige) увеличен до 300 уровня
 function updateHUD() { 
     document.getElementById('scoreUI').innerText = Math.floor(player.targetR); 
     document.getElementById('levelUI').innerText = player.level; 
