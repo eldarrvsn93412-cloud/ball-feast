@@ -70,11 +70,15 @@
         
         .skills-container { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
         .skill-card {
-            background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; cursor: pointer;
+            background: rgba(255,255,255,0.05); padding: 15px 5px; border-radius: 10px; cursor: pointer;
             border: 2px solid rgba(255,255,255,0.2); flex: 1; color: white; transition: 0.2s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
         }
         .skill-card:hover { background: rgba(255,255,255,0.15); transform: scale(1.05); border-color:#4fc3f7; }
         .skill-card:active { transform: scale(0.95); }
+        .skill-icon { font-size: 36px; margin-bottom: 8px; }
+        .skill-name { font-weight: bold; font-size: 15px; margin-bottom: 5px; color: #4fc3f7; }
+        .skill-desc { font-size: 11px; color: #aaa; line-height: 1.2; padding: 0 5px; }
 
         #dashBtn {
             position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px;
@@ -164,20 +168,14 @@
 </div>
 
 <div id="level-up-menu" class="ui-layer hidden">
-    <div class="menu" style="max-width: 450px;">
+    <div class="menu" style="max-width: 500px;">
         <h2 style="color: #ffd54f; text-shadow: 0 0 10px #ffd54f;">LEVEL UP!</h2>
         <p>Choose a powerful buff (for 7 sec):</p>
-        <div class="skills-container">
-            <div class="skill-card" onclick="applySkill('speed')">⚡<br>Speed</div>
-            <div class="skill-card" onclick="applySkill('magnet')">🧲<br>Magnet</div>
-            <div class="skill-card" onclick="applySkill('shield')">🛡<br>Shield</div>
-        </div>
+        <div class="skills-container" id="skillsChoices"></div>
     </div>
 </div>
 
 <script>
-// === ИСПРАВЛЕННЫЙ ГЛОБАЛЬНЫЙ БЛОКИРОВЩИК ===
-// Теперь он разрешает любые касания и микро-движения внутри `.menu`
 document.addEventListener('touchstart', e => { 
     if (!e.target.closest('.menu') && !e.target.closest('#dashBtn')) {
         if (e.cancelable) e.preventDefault(); 
@@ -189,7 +187,6 @@ document.addEventListener('touchmove', e => {
         if (e.cancelable) e.preventDefault(); 
     }
 }, { passive: false });
-// ============================================
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: false }); 
@@ -219,6 +216,15 @@ const SKINS = [
     { id: 7, emoji: '👻', hue: 320, req: 500000, name: 'Phantom' },
     { id: 8, emoji: '😈', hue: 0, req: 800000, name: 'Demon' },
     { id: 9, emoji: '👑', hue: 45, req: 1500000, name: 'Emperor' }
+];
+
+const SKILL_POOL = [
+    { id: 'speed', icon: '⚡', name: 'Speed', desc: 'Move 2x faster' },
+    { id: 'magnet', icon: '🧲', name: 'Magnet', desc: 'Pull all nearby food' },
+    { id: 'shield', icon: '🛡', name: 'Shield', desc: 'Block 1 fatal bite' },
+    { id: 'ghost', icon: '👻', name: 'Ghost', desc: 'Invincible to big bots & viruses' },
+    { id: 'vaccine', icon: '💊', name: 'Vaccine', desc: 'Eat green viruses for huge mass' },
+    { id: 'frenzy', icon: '🔥', name: 'Frenzy', desc: 'Infinite dashes (no mass cost)' }
 ];
 
 let totalScore = parseInt(localStorage.getItem('smileyTotalScore') || '0');
@@ -321,7 +327,7 @@ class Entity {
         else if (this.isPlayer) this.emoji = ''; 
         else this.emoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
 
-        this.activeBuffs = { speed: 0, magnet: 0, shield: 0 };
+        this.activeBuffs = { speed: 0, magnet: 0, shield: 0, ghost: 0, vaccine: 0, frenzy: 0 };
         this.level = 1;
 
         if (this.isPlayer) {
@@ -343,7 +349,9 @@ class Entity {
 
     update(dt) {
         this.r += (this.targetR - this.r) * 5 * dt;
-        let currentSpeedLimit = this.speedLimit * Math.pow(10 / Math.max(10, this.r), 0.2);
+        
+        // ОПТИМИЗАЦИЯ СКОРОСТИ: Теперь большие сущности почти не замедляются математически
+        let currentSpeedLimit = this.speedLimit * Math.pow(20 / Math.max(20, this.r), 0.08);
         if (this.activeBuffs.speed > 0) currentSpeedLimit *= 1.8;
 
         if (this.isPlayer && joystick.active) {
@@ -390,11 +398,27 @@ class Entity {
 
     draw(ctx) {
         ctx.save(); ctx.translate(this.x, this.y);
+        
+        if (this.isPlayer && this.activeBuffs.ghost > 0) ctx.globalAlpha = 0.4;
 
         if (this.activeBuffs.shield > 0) {
             ctx.save(); ctx.rotate(performance.now() / 300);
             ctx.beginPath(); ctx.arc(0, 0, this.r + 20, 0, Math.PI * 2);
             ctx.setLineDash([20, 15]); ctx.strokeStyle = "#00e5ff"; ctx.lineWidth = 6; ctx.stroke();
+            ctx.restore();
+        }
+        
+        if (this.activeBuffs.vaccine > 0) {
+            ctx.save(); ctx.rotate(-performance.now() / 250);
+            ctx.beginPath(); ctx.arc(0, 0, this.r + 15, 0, Math.PI * 2);
+            ctx.setLineDash([10, 10]); ctx.strokeStyle = "#76ff03"; ctx.lineWidth = 5; ctx.stroke();
+            ctx.restore();
+        }
+
+        if (this.activeBuffs.frenzy > 0) {
+            ctx.save(); ctx.rotate(performance.now() / 200);
+            ctx.beginPath(); ctx.arc(0, 0, this.r + 25, 0, Math.PI * 2);
+            ctx.setLineDash([30, 20]); ctx.strokeStyle = "#ff1744"; ctx.lineWidth = 5; ctx.stroke();
             ctx.restore();
         }
 
@@ -424,6 +448,8 @@ class Entity {
         
         if (this.isPlayer) { ctx.restore(); ctx.save(); ctx.translate(this.x, this.y); } else { ctx.rotate(-this.rotation); }
 
+        if (this.isPlayer && this.activeBuffs.ghost > 0) ctx.globalAlpha = 0.4;
+
         ctx.beginPath(); ctx.arc(0, 0, this.r * 0.75, -Math.PI * 0.85, -Math.PI * 0.6);
         ctx.lineWidth = Math.max(2, this.r * 0.15); ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.stroke();
         ctx.beginPath(); ctx.arc(0, 0, this.r * 0.75, -Math.PI * 0.45, -Math.PI * 0.35);
@@ -445,12 +471,39 @@ class AI extends Entity {
     update(dt) {
         this.changeDirTimer -= dt;
         if (this.changeDirTimer <= 0) {
-            let angle = this.isBoss ? Math.atan2(player.y - this.y, player.x - this.x) + (this.targetR < player.targetR ? Math.PI : 0) : Math.random() * Math.PI * 2;
-            let currentSpeedLimit = this.speedLimit * Math.pow(10 / Math.max(10, this.r), 0.2);
-            let speedMult = this.isBoss ? 0.85 : 0.6;
+            let angle, speedMult, timerReset;
+            
+            if (this.isBoss) {
+                let dx = player.x - this.x; 
+                let dy = player.y - this.y;
+                let distSq = dx*dx + dy*dy;
+                
+                if (this.targetR >= player.targetR) {
+                    angle = Math.atan2(dy, dx);
+                    speedMult = 0.85; 
+                    timerReset = 0.5;
+                } else {
+                    if (distSq < 800 * 800) {
+                        angle = Math.atan2(dy, dx) + Math.PI;
+                        speedMult = 0.85; 
+                        timerReset = 0.5;
+                    } else {
+                        angle = Math.random() * Math.PI * 2;
+                        speedMult = 0.6; 
+                        timerReset = 1 + Math.random() * 2;
+                    }
+                }
+            } else {
+                angle = Math.random() * Math.PI * 2;
+                speedMult = 0.6; 
+                timerReset = 1 + Math.random() * 3;
+            }
+            
+            let currentSpeedLimit = this.speedLimit * Math.pow(20 / Math.max(20, this.r), 0.08);
             this.vx = Math.cos(angle) * currentSpeedLimit * speedMult;
             this.vy = Math.sin(angle) * currentSpeedLimit * speedMult;
-            this.changeDirTimer = this.isBoss ? 0.5 : 1 + Math.random() * 3; 
+            
+            this.changeDirTimer = timerReset; 
         }
         super.update(dt);
     }
@@ -555,13 +608,22 @@ function checkCollisions() {
             let dx = ent.x - v.x; let dy = ent.y - v.y;
             if (dx*dx + dy*dy < reqDist*reqDist) {
                 if (ent.r > v.r * 1.1) {
-                    ent.targetR *= 0.6; playSound('virus');
-                    createShockwave(ent.x, ent.y, '#76ff03', 600); createFloatingText("💥 VIRUS!", ent.x, ent.y, "#76ff03");
-                    for(let k=0; k<20; k++) {
-                        let ang = Math.random()*Math.PI*2;
-                        pellets.push({ x: ent.x + Math.cos(ang)*ent.r, y: ent.y + Math.sin(ang)*ent.r, r: 8, hue: ent.hue });
+                    if (ent.isPlayer && ent.activeBuffs.vaccine > 0) {
+                        ent.targetR = Math.sqrt(ent.targetR*ent.targetR + v.r*v.r * 0.8);
+                        playSound('eat');
+                        createShockwave(ent.x, ent.y, '#76ff03', ent.r * 2);
+                        createFloatingText("💉 YUMMY!", ent.x, ent.y, "#76ff03");
+                        let pos = getSpawnPos(2000, 3000); v.x = pos.x; v.y = pos.y;
+                    } else if (ent.isPlayer && ent.activeBuffs.ghost > 0) {
+                    } else {
+                        ent.targetR *= 0.6; playSound('virus');
+                        createShockwave(ent.x, ent.y, '#76ff03', 600); createFloatingText("💥 VIRUS!", ent.x, ent.y, "#76ff03");
+                        for(let k=0; k<20; k++) {
+                            let ang = Math.random()*Math.PI*2;
+                            pellets.push({ x: ent.x + Math.cos(ang)*ent.r, y: ent.y + Math.sin(ang)*ent.r, r: 8, hue: ent.hue });
+                        }
+                        let pos = getSpawnPos(2000, 3000); v.x = pos.x; v.y = pos.y;
                     }
-                    let pos = getSpawnPos(2000, 3000); v.x = pos.x; v.y = pos.y;
                 }
             }
         }
@@ -578,6 +640,8 @@ function checkCollisions() {
                 else if (e2.r > e1.r * 1.1) { eater = e2; eaten = e1; idx = i; }
 
                 if (eater && eaten) {
+                    if (eaten.isPlayer && eaten.activeBuffs.ghost > 0) continue; 
+
                     if (eaten.activeBuffs.shield > 0) {
                         eaten.activeBuffs.shield = 0; eaten.vx = dx * (eater===e1?-15:15); eaten.vy = dy * (eater===e1?-15:15);
                         createParticles(eaten.x, eaten.y, "#00e5ff", 30, 3); createShockwave(eaten.x, eaten.y, "#00e5ff", 250);
@@ -610,24 +674,62 @@ function checkLevelUp() {
     if (player.targetR > nextThreshold) {
         player.level++; playSound('levelup');
         createShockwave(player.x, player.y, '#ffd54f', 800);
-        gameState = 'LEVEL_UP'; document.getElementById('level-up-menu').classList.remove('hidden');
+        
+        let shuffled = [...SKILL_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
+        let container = document.getElementById('skillsChoices');
+        container.innerHTML = '';
+        
+        shuffled.forEach(s => {
+            let div = document.createElement('div');
+            div.className = 'skill-card';
+            div.onclick = () => applySkill(s.id);
+            div.innerHTML = `
+                <div class="skill-icon">${s.icon}</div>
+                <div class="skill-name">${s.name}</div>
+                <div class="skill-desc">${s.desc}</div>
+            `;
+            container.appendChild(div);
+        });
+
+        gameState = 'LEVEL_UP'; 
+        document.getElementById('level-up-menu').classList.remove('hidden');
     }
     updateHUD();
 }
 
 function applySkill(type) {
-    player.activeBuffs[type] = 7; document.getElementById('level-up-menu').classList.add('hidden');
+    player.activeBuffs[type] = 7; 
+    document.getElementById('level-up-menu').classList.add('hidden');
     gameState = 'PLAYING'; lastTime = performance.now();
 }
 
 function doDash() {
-    if (gameState !== 'PLAYING' || dashCooldown > 0 || player.targetR <= 20) return;
-    playSound('dash'); dashCooldown = 1.0; player.targetR *= 0.9;
+    if (gameState !== 'PLAYING') return;
+    let isFrenzy = player.activeBuffs.frenzy > 0;
+    
+    if (!isFrenzy && (dashCooldown > 0 || player.targetR <= 20)) return;
+    
+    playSound('dash'); 
+    dashCooldown = isFrenzy ? 0.2 : 1.0; 
+    
+    if (!isFrenzy) player.targetR *= 0.9; 
+    
+    // СИЛА РЫВКА МАСШТАБИРУЕТСЯ С РАЗМЕРОМ
+    let dashForce = 1500 + (player.r * 2);
+
     let speedSq = player.vx*player.vx + player.vy*player.vy;
     if (speedSq > 100) { 
-        let speed = Math.sqrt(speedSq); player.vx += (player.vx / speed) * 1500; player.vy += (player.vy / speed) * 1500; 
-    } else { let ang = Math.random() * Math.PI*2; player.vx += Math.cos(ang)*1500; player.vy += Math.sin(ang)*1500; }
-    createParticles(player.x, player.y, '#ff9100', 40, 4); createShockwave(player.x, player.y, '#ff9100', player.r*3);
+        let speed = Math.sqrt(speedSq); 
+        player.vx += (player.vx / speed) * dashForce; 
+        player.vy += (player.vy / speed) * dashForce; 
+    } else { 
+        let ang = Math.random() * Math.PI*2; 
+        player.vx += Math.cos(ang)*dashForce; 
+        player.vy += Math.sin(ang)*dashForce; 
+    }
+    
+    createParticles(player.x, player.y, isFrenzy ? '#ff1744' : '#ff9100', 40, 4); 
+    createShockwave(player.x, player.y, isFrenzy ? '#ff1744' : '#ff9100', player.r*3);
 }
 
 function drawBackground() {
@@ -661,16 +763,29 @@ function drawBackground() {
 
 let bossTimer = 0;
 function gameLoop(timestamp) {
-    if (!lastTime) lastTime = timestamp; let dt = (timestamp - lastTime) / 1000; lastTime = timestamp;
-    if (dt > 0.1) dt = 0.1;
+    if (!lastTime) lastTime = timestamp; 
+    let realDt = (timestamp - lastTime) / 1000; 
+    lastTime = timestamp;
+    if (realDt > 0.1) realDt = 0.1;
+
+    // === ГЛОБАЛЬНОЕ УСКОРЕНИЕ ИГРЫ (АДРЕНАЛИН) ===
+    // Чем больше игрок, тем быстрее течет время во всем игровом мире!
+    let gameSpeed = 1 + Math.max(0, player ? (player.r - 20) : 0) * 0.002; 
+    gameSpeed = Math.min(gameSpeed, 2.5); // Ограничиваем ускорение в 2.5 раза
+    let dt = realDt * gameSpeed;
 
     if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) { cw = canvas.width = window.innerWidth; ch = canvas.height = window.innerHeight; }
 
     if (gameState === 'PLAYING') {
         dashCooldown -= dt;
         let btn = document.getElementById('dashBtn');
-        if(dashCooldown > 0 || player.targetR <= 20) { btn.style.opacity = '0.5'; btn.style.filter = 'grayscale(1)'; }
-        else { btn.style.opacity = '1'; btn.style.filter = 'none'; }
+        let isFrenzy = player.activeBuffs.frenzy > 0;
+        
+        if(!isFrenzy && (dashCooldown > 0 || player.targetR <= 20)) { 
+            btn.style.opacity = '0.5'; btn.style.filter = 'grayscale(1)'; 
+        } else { 
+            btn.style.opacity = '1'; btn.style.filter = isFrenzy ? 'hue-rotate(320deg) brightness(1.5)' : 'none'; 
+        }
 
         entities.forEach(e => e.update(dt));
         maintainInfiniteWorld(); checkCollisions();
@@ -688,11 +803,12 @@ function gameLoop(timestamp) {
             if (shockwaves[i].life <= 0) shockwaves.splice(i, 1);
         }
 
-        bossTimer += dt; if (bossTimer > 90) { spawnBoss(); bossTimer = 0; } 
+        bossTimer += realDt; if (bossTimer > 90) { spawnBoss(); bossTimer = 0; } 
 
-        let targetZoom = Math.max(0.15, 45 / Math.max(10, player.r)); 
-        camera.zoom += (targetZoom - camera.zoom) * 4 * dt;
-        camera.x += (player.x - camera.x) * 6 * dt; camera.y += (player.y - camera.y) * 6 * dt;
+        // КАМЕРА: Менее агрессивное отдаление, чтобы чувствовать драйв (было 45, стало 60)
+        let targetZoom = Math.max(0.2, 60 / Math.max(20, player.r)); 
+        camera.zoom += (targetZoom - camera.zoom) * 4 * realDt;
+        camera.x += (player.x - camera.x) * 6 * realDt; camera.y += (player.y - camera.y) * 6 * realDt;
         
         updateHUD(); updateLeaderboard();
     }
@@ -789,7 +905,6 @@ function showMenu(menuId) {
     document.getElementById('dashBtn').classList.add('hidden');
 }
 
-// === ПОЛНОЭКРАННЫЙ РЕЖИМ ПРИ ЗАПУСКЕ ===
 function goFullscreen() {
     let elem = document.documentElement; 
     if (elem.requestFullscreen) {
@@ -800,7 +915,7 @@ function goFullscreen() {
 }
 
 function startGame() {
-    goFullscreen(); // Браузер перейдет в полноэкранный режим и скроет адресную строку
+    goFullscreen(); 
     initAudio(); 
     player = new Entity(0, 0, 20, SKINS[selectedSkin].hue, 'YOU', true);
     player.emoji = SKINS[selectedSkin].emoji; 
