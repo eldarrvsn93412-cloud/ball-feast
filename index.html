@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Jelly Emoji.io</title>
     <style>
-        :root { overscroll-behavior: none !important; touch-action: none !important; }
+        :root { overscroll-behavior: none !important; }
         body, html {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             margin: 0; padding: 0; width: 100vw; height: 100dvh;
@@ -26,6 +26,7 @@
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; display: flex; flex-direction: column;
             justify-content: center; align-items: center; text-align: center;
+            z-index: 100;
         }
         .menu {
             background: rgba(15, 20, 30, 0.85); padding: 30px; border-radius: 20px;
@@ -124,8 +125,8 @@
     <div class="menu">
         <h1>JELLY EMOJI.IO 😎</h1>
         <div class="stat-text">Total Mass Collected: <span id="mainTotalScore">0</span></div>
-        <p>Collect mass to unlock new awesome skins!</p>
-        <button class="btn-green" onclick="startGame()">Play</button>
+        <p>Collect mass to unlock new skins!</p>
+        <button class="btn-green" onclick="startGame()">Play (Fullscreen)</button>
         <button class="btn-purple" onclick="openSkinsMenu()">Wardrobe (Skins)</button>
         <button onclick="showMenu('settings-menu')">Settings</button>
     </div>
@@ -175,9 +176,20 @@
 </div>
 
 <script>
-// Глобальный блокировщик
-document.addEventListener('touchstart', e => { if (!e.target.closest('.menu') && !e.target.closest('#dashBtn')) if (e.cancelable) e.preventDefault(); }, { passive: false });
-document.addEventListener('touchmove', e => { if (!e.target.closest('.skins-grid')) if (e.cancelable) e.preventDefault(); }, { passive: false });
+// === ИСПРАВЛЕННЫЙ ГЛОБАЛЬНЫЙ БЛОКИРОВЩИК ===
+// Теперь он разрешает любые касания и микро-движения внутри `.menu`
+document.addEventListener('touchstart', e => { 
+    if (!e.target.closest('.menu') && !e.target.closest('#dashBtn')) {
+        if (e.cancelable) e.preventDefault(); 
+    }
+}, { passive: false });
+
+document.addEventListener('touchmove', e => { 
+    if (!e.target.closest('.menu') && !e.target.closest('#dashBtn')) {
+        if (e.cancelable) e.preventDefault(); 
+    }
+}, { passive: false });
+// ============================================
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: false }); 
@@ -742,4 +754,124 @@ function gameLoop(timestamp) {
                 let vX = (cw / camera.zoom) / 2; let vY = (ch / camera.zoom) / 2;
                 if (Math.abs(dx) > vX || Math.abs(dy) > vY) {
                     let margin = 50; let halfW = cw / 2 - margin; let halfH = ch / 2 - margin;
-                    let screenDx = dx * camera.zoom; let screenDy = dy * 
+                    let screenDx = dx * camera.zoom; let screenDy = dy * camera.zoom;
+                    let scale = Math.min(halfW / Math.abs(screenDx), halfH / Math.abs(screenDy));
+                    let indX = cw / 2 + screenDx * scale; let indY = ch / 2 + screenDy * scale;
+                    let ang = Math.atan2(dy, dx);
+                    
+                    ctx.save(); ctx.translate(indX, indY); ctx.rotate(ang);
+                    ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-15, 15); ctx.lineTo(-8, 0); ctx.lineTo(-15, -15); ctx.closePath();
+                    ctx.fillStyle = '#ff1744'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+                    ctx.rotate(-ang);
+                    ctx.font = '24px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText('👹', -Math.cos(ang)*35, -Math.sin(ang)*35);
+                    ctx.fillStyle = '#ff5252'; ctx.font = 'bold 14px Arial';
+                    ctx.fillText(Math.floor(Math.sqrt(dx*dx + dy*dy) / 10) + 'm', -Math.cos(ang)*65, -Math.sin(ang)*65);
+                    ctx.restore();
+                }
+            }
+        });
+
+        if (joystick.active) {
+            ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.arc(joystick.originX, joystick.originY, 65, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.fill();
+            ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(joystick.x, joystick.y, 35, 0, Math.PI*2); ctx.fillStyle = '#4fc3f7'; ctx.fill();
+            ctx.lineWidth = 3; ctx.strokeStyle = 'white'; ctx.stroke(); ctx.globalAlpha = 1.0;
+        }
+    }
+    requestAnimationFrame(gameLoop);
+}
+
+function showMenu(menuId) {
+    document.querySelectorAll('.ui-layer').forEach(el => el.classList.add('hidden'));
+    document.getElementById(menuId).classList.remove('hidden');
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('leaderboard').classList.add('hidden');
+    document.getElementById('dashBtn').classList.add('hidden');
+}
+
+// === ПОЛНОЭКРАННЫЙ РЕЖИМ ПРИ ЗАПУСКЕ ===
+function goFullscreen() {
+    let elem = document.documentElement; 
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(err => console.log("Fullscreen error:", err));
+    } else if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen();
+    }
+}
+
+function startGame() {
+    goFullscreen(); // Браузер перейдет в полноэкранный режим и скроет адресную строку
+    initAudio(); 
+    player = new Entity(0, 0, 20, SKINS[selectedSkin].hue, 'YOU', true);
+    player.emoji = SKINS[selectedSkin].emoji; 
+    initWorld();
+    showMenu('hud'); document.getElementById('leaderboard').classList.remove('hidden'); document.getElementById('dashBtn').classList.remove('hidden');
+    gameState = 'PLAYING'; lastTime = performance.now(); bossTimer = 0; dashCooldown = 0; activeTouchId = null; 
+}
+
+function gameOver() {
+    gameState = 'GAMEOVER'; 
+    let finalMass = Math.floor(player.targetR); activeTouchId = null; joystick.active = false;
+    totalScore += finalMass; localStorage.setItem('smileyTotalScore', totalScore.toString());
+    document.getElementById('finalScore').innerText = finalMass.toLocaleString(); updateMenuStats(); showMenu('game-over-menu');
+}
+
+function updateHUD() { document.getElementById('scoreUI').innerText = Math.floor(player.targetR); document.getElementById('levelUI').innerText = player.level; }
+function updateLeaderboard() {
+    let top = [...entities].sort((a, b) => b.r - a.r).slice(0, 5);
+    let html = ''; top.forEach(e => html += `<li class="${e.isBoss ? 'boss-text' : (e.isPlayer ? 'player-text' : '')}">${e.name} ${e.emoji} - ${Math.floor(e.r)}</li>`);
+    document.getElementById('lb-list').innerHTML = html;
+}
+
+function handleInputStart(x, y) {
+    if (gameState !== 'PLAYING') return;
+    joystick.active = true; joystick.originX = x; joystick.originY = y; joystick.x = x; joystick.y = y;
+}
+function handleInputMove(x, y) {
+    if (!joystick.active) return;
+    let dx = x - joystick.originX; let dy = y - joystick.originY; let distSq = dx*dx + dy*dy; let maxDist = 65;
+    if (distSq > maxDist*maxDist) { let dist = Math.sqrt(distSq); dx = (dx / dist) * maxDist; dy = (dy / dist) * maxDist; }
+    joystick.x = joystick.originX + dx; joystick.y = joystick.originY + dy;
+    joystick.dirX = dx / maxDist; joystick.dirY = dy / maxDist;
+}
+function handleInputEnd() { joystick.active = false; joystick.dirX = 0; joystick.dirY = 0; }
+
+canvas.addEventListener('touchstart', e => { 
+    if (e.cancelable) e.preventDefault(); if (gameState !== 'PLAYING') return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        let t = e.changedTouches[i];
+        if (activeTouchId === null) { activeTouchId = t.identifier; handleInputStart(t.clientX, t.clientY); break; }
+    }
+}, {passive: false});
+
+canvas.addEventListener('touchmove', e => { 
+    if (e.cancelable) e.preventDefault(); if (gameState !== 'PLAYING') return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        let t = e.changedTouches[i];
+        if (t.identifier === activeTouchId) { handleInputMove(t.clientX, t.clientY); break; }
+    }
+}, {passive: false});
+
+const endTouch = (e) => {
+    if (e.cancelable) e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        let t = e.changedTouches[i];
+        if (t.identifier === activeTouchId) { activeTouchId = null; handleInputEnd(); break; }
+    }
+};
+
+canvas.addEventListener('touchend', endTouch, {passive: false});
+canvas.addEventListener('touchcancel', endTouch, {passive: false});
+
+canvas.addEventListener('mousedown', e => { activeTouchId = 'mouse'; handleInputStart(e.clientX, e.clientY); });
+canvas.addEventListener('mousemove', e => { if(activeTouchId === 'mouse') handleInputMove(e.clientX, e.clientY); });
+canvas.addEventListener('mouseup', e => { activeTouchId = null; handleInputEnd(); });
+canvas.addEventListener('mouseleave', e => { activeTouchId = null; handleInputEnd(); });
+
+document.getElementById('dashBtn').addEventListener('touchstart', e => { if (e.cancelable) e.preventDefault(); e.stopPropagation(); doDash(); }, {passive: false});
+document.getElementById('dashBtn').addEventListener('mousedown', e => { e.stopPropagation(); e.preventDefault(); doDash(); });
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
