@@ -62,7 +62,7 @@
         .boss-text { color: #ff5252; font-weight: bold; text-shadow: 0 0 8px red; }
         .player-text { color: #66bb6a; font-weight: bold; text-shadow: 0 0 8px #66bb6a;}
         
-        .skills-container { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
+        .skills-container { display: flex; gap: 10px; justify-content: center; margin-top: 15px; align-items: stretch; }
         .skill-card {
             background: rgba(255,255,255,0.05); padding: 15px 5px; border-radius: 10px; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); flex: 1; color: white; transition: 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
         }
@@ -71,15 +71,22 @@
         .skill-name { font-weight: bold; font-size: 15px; margin-bottom: 5px; color: #4fc3f7; }
         .skill-desc { font-size: 11px; color: #aaa; line-height: 1.2; padding: 0 5px; }
 
+        /* НОВЫЙ ЭФФЕКТ ДЛЯ КНОПКИ BIG BANG В МЕНЮ */
+        .big-bang-card {
+            background: linear-gradient(135deg, #ff0055, #ff9900, #00ffcc, #aa00ff) !important;
+            background-size: 300% 300% !important;
+            animation: rainbowBg 3s ease infinite, pulseBigBang 0.8s alternate infinite !important;
+            border: 3px solid #fff !important;
+            box-shadow: 0 0 20px #ff0055, 0 0 30px #00ffcc !important;
+            flex: 1.2 !important; /* Делает её чуть шире остальных */
+        }
+        @keyframes rainbowBg { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes pulseBigBang { from { transform: scale(1); } to { transform: scale(1.08); } }
+
         #dashBtn {
             position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #ff9100, #ff1744); box-shadow: 0 5px 20px rgba(255, 23, 68, 0.6); color: white; font-size: 16px; font-weight: bold; display: flex; justify-content: center; align-items: center; pointer-events: auto; cursor: pointer; border: 3px solid rgba(255,255,255,0.5); user-select: none; transition: 0.1s; z-index: 20; touch-action: none !important;
         }
         #dashBtn:active { transform: scale(0.85); box-shadow: 0 0 10px rgba(255, 23, 68, 0.8); }
-
-        #ascendBtn {
-            position: absolute; top: 60px; left: 50%; transform: translateX(-50%); padding: 10px 25px; background: linear-gradient(45deg, #aa00ff, #ff1744); color: white; font-weight: bold; font-size: 18px; border-radius: 25px; box-shadow: 0 0 20px #aa00ff; cursor: pointer; border: 2px solid white; animation: pulseSupernova 1s infinite alternate; z-index: 20; pointer-events: auto; text-shadow: 0 2px 5px rgba(0,0,0,0.5); text-transform: uppercase;
-        }
-        @keyframes pulseSupernova { from { transform: translateX(-50%) scale(1); box-shadow: 0 0 15px #aa00ff; } to { transform: translateX(-50%) scale(1.05); box-shadow: 0 0 35px #ff1744; } }
 
         .stat-text { color: #ffd54f; font-weight: bold; font-size: 18px; margin-bottom: 15px; text-shadow: 0 0 10px rgba(255,213,79,0.5); }
         .skins-grid, .worlds-grid {
@@ -108,7 +115,6 @@
 </div>
 
 <div id="dashBtn" class="hidden">💨 DASH</div>
-<div id="ascendBtn" class="hidden" onclick="triggerAscension()">🌌 BIG BANG (WIN)</div>
 
 <div id="main-menu" class="ui-layer">
     <div class="menu">
@@ -162,7 +168,7 @@
 </div>
 
 <div id="level-up-menu" class="ui-layer hidden">
-    <div class="menu" style="max-width: 500px;">
+    <div class="menu" style="max-width: 650px;">
         <h2 style="color: #ffd54f; text-shadow: 0 0 10px #ffd54f;">LEVEL UP!</h2>
         <p>Choose a powerful buff (for 7 sec):</p>
         <div class="skills-container" id="skillsChoices"></div>
@@ -190,8 +196,8 @@
 </div>
 
 <script>
-document.addEventListener('touchstart', e => { if (!e.target.closest('.menu') && !e.target.closest('#dashBtn') && !e.target.closest('#ascendBtn')) { if (e.cancelable) e.preventDefault(); } }, { passive: false });
-document.addEventListener('touchmove', e => { if (!e.target.closest('.menu') && !e.target.closest('#dashBtn') && !e.target.closest('#ascendBtn')) { if (e.cancelable) e.preventDefault(); } }, { passive: false });
+document.addEventListener('touchstart', e => { if (!e.target.closest('.menu') && !e.target.closest('#dashBtn')) { if (e.cancelable) e.preventDefault(); } }, { passive: false });
+document.addEventListener('touchmove', e => { if (!e.target.closest('.menu') && !e.target.closest('#dashBtn')) { if (e.cancelable) e.preventDefault(); } }, { passive: false });
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: false }); 
@@ -446,16 +452,42 @@ function createParticles(x, y, colorStr, count, speedMult = 1, baseScale = 1) {
 function createFloatingText(text, x, y, color, size=26) { floatingTexts.push({ text: text, x: x, y: y, life: 1.5, color: color, size: size }); }
 function createShockwave(x, y, color, maxRadius = 400) { shockwaves.push({ x: x, y: y, r: 10, maxR: maxRadius, life: 1.0, color: color }); }
 
-// ИСПРАВЛЕНО: Теперь уровень пересчитывается корректно за 1 кадр и не спамит меню Level Up!
+// ИЗМЕНЕНИЕ: Добавляем кнопку Большого Взрыва прямо в меню скиллов, если уровень >= 300
 function checkLevelUp() {
     let expectedLevel = Math.floor((player.targetR - 20) / 30) + 1;
     if (expectedLevel > player.level) {
-        player.level = expectedLevel; // Сразу прыгаем на реальный уровень
-        playSound('levelup'); createShockwave(player.x, player.y, '#ffd54f', player.r * 2);
-        let shuffled = [...SKILL_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
-        let container = document.getElementById('skillsChoices'); container.innerHTML = '';
-        shuffled.forEach(s => { let div = document.createElement('div'); div.className = 'skill-card'; div.onclick = () => applySkill(s.id); div.innerHTML = `<div class="skill-icon">${s.icon}</div><div class="skill-name">${s.name}</div><div class="skill-desc">${s.desc}</div>`; container.appendChild(div); });
-        gameState = 'LEVEL_UP'; document.getElementById('level-up-menu').classList.remove('hidden');
+        player.level = expectedLevel;
+        playSound('levelup'); 
+        createShockwave(player.x, player.y, '#ffd54f', player.r * 2);
+        
+        // Берем 2 обычных навыка, если уровень 300+ (чтобы оставить место для карточки взрыва), иначе 3.
+        let numNormalSkills = player.level >= 300 ? 2 : 3;
+        let shuffled = [...SKILL_POOL].sort(() => 0.5 - Math.random()).slice(0, numNormalSkills);
+        let container = document.getElementById('skillsChoices'); 
+        container.innerHTML = '';
+        
+        if (player.level >= 300) {
+            let bbDiv = document.createElement('div'); 
+            bbDiv.className = 'skill-card big-bang-card'; 
+            bbDiv.onclick = () => triggerAscension(); 
+            bbDiv.innerHTML = `
+                <div class="skill-icon" style="font-size: 42px;">🌌</div>
+                <div class="skill-name" style="color: #fff; font-size: 18px; text-shadow: 0 0 10px #fff; margin-bottom: 5px;">BIG BANG</div>
+                <div class="skill-desc" style="color: #fff; font-weight: bold; font-size: 13px;">Devour the Universe<br>& Prestige!</div>
+            `; 
+            container.appendChild(bbDiv);
+        }
+
+        shuffled.forEach(s => { 
+            let div = document.createElement('div'); 
+            div.className = 'skill-card'; 
+            div.onclick = () => applySkill(s.id); 
+            div.innerHTML = `<div class="skill-icon">${s.icon}</div><div class="skill-name">${s.name}</div><div class="skill-desc">${s.desc}</div>`; 
+            container.appendChild(div); 
+        });
+        
+        gameState = 'LEVEL_UP'; 
+        document.getElementById('level-up-menu').classList.remove('hidden');
     }
     updateHUD();
 }
@@ -508,11 +540,14 @@ function checkCollisions(dt) {
     }
 }
 
+// ИЗМЕНЕНИЕ: Активация вознесения вызывается при клике по карте в меню
 function triggerAscension() {
-    if (gameState !== 'PLAYING') return; playSound('levelup'); createShockwave(player.x, player.y, '#aa00ff', player.r*10);
+    if (gameState !== 'PLAYING' && gameState !== 'LEVEL_UP') return;
+    document.getElementById('level-up-menu').classList.add('hidden'); // Прячем меню прокачки
+    playSound('levelup'); createShockwave(player.x, player.y, '#aa00ff', player.r*10);
     gameState = 'GAMEOVER'; let finalMass = Math.floor(player.targetR * 10); activeTouchId = null; joystick.active = false;
     totalScore += finalMass; prestigeCount++; localStorage.setItem('smileyTotalScore', totalScore.toString()); localStorage.setItem('smileyPrestige', prestigeCount.toString());
-    document.getElementById('finalScore').innerText = "+" + finalMass.toLocaleString(); document.getElementById('finalScore').style.color = '#aa00ff'; document.getElementById('ascendBtn').classList.add('hidden');
+    document.getElementById('finalScore').innerText = "+" + finalMass.toLocaleString(); document.getElementById('finalScore').style.color = '#aa00ff';
     let unlocked = WORLDS.find(w => w.req === prestigeCount);
     if (unlocked) { document.getElementById('prestigeUnlockMsg').style.display = 'block'; document.getElementById('prestigeUnlockMsg').innerText = `🌐 NEW DIMENSION UNLOCKED: ${unlocked.name.toUpperCase()}!`; } else { document.getElementById('prestigeUnlockMsg').style.display = 'none'; }
     updateMenuStats(); showMenu('game-over-menu'); document.getElementById('gameOverTitle').innerText = "🌌 UNIVERSE DEVOURED! 🌌"; document.getElementById('gameOverTitle').style.color = "#aa00ff";
@@ -532,20 +567,18 @@ function doDash() {
     createParticles(player.x, player.y, isFrenzy ? '#ff1744' : '#ff9100', 40, 4, Math.max(1, player.r/20)); createShockwave(player.x, player.y, isFrenzy ? '#ff1744' : '#ff9100', player.r*3);
 }
 
-// ИСПРАВЛЕНО: Бесконечное отдаление камеры без лагов сетки
 function drawBackground() {
     ctx.clearRect(0, 0, cw, ch); ctx.save(); ctx.translate(cw / 2, ch / 2); ctx.scale(camera.zoom, camera.zoom); ctx.translate(-camera.x, -camera.y);
     let vDX = (cw / camera.zoom)/2 + 100; let vDY = (ch / camera.zoom)/2 + 100; let tS = Date.now() / 1000;
 
     bgParticles.forEach(s => {
         s.x += s.vx; s.y += s.vy;
-        // Закольцовываем частицы вокруг камеры, чтобы они не терялись при отдалении
         let cx = camera.x, cy = camera.y;
         if (s.x < cx - vDX) s.x += vDX*2; if (s.x > cx + vDX) s.x -= vDX*2;
         if (s.y < cy - vDY) s.y += vDY*2; if (s.y > cy + vDY) s.y -= vDY*2;
 
         let alpha = 0.2 + Math.abs(Math.sin(tS * s.speed + s.offset)) * 0.5;
-        let sr = s.r / camera.zoom; // Чтобы частицы оставались визуально одного размера
+        let sr = s.r / camera.zoom; 
         
         if (cwObj.bg === 'space') { ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fillRect(s.x-sr, s.y-sr, sr*2, sr*2); }
         else if (cwObj.bg === 'cyber') { ctx.fillStyle = `rgba(0, 229, 255, ${alpha})`; ctx.font = `${sr*8}px monospace`; ctx.fillText(s.char, s.x, s.y); }
@@ -561,10 +594,7 @@ function drawBackground() {
 
     ctx.strokeStyle = `rgba(255, 255, 255, 0.05)`; ctx.lineWidth = Math.max(2, 2/camera.zoom);
     if (cwObj.bg==='cyber') ctx.strokeStyle='rgba(255,23,68,0.1)'; if (cwObj.bg==='lava') ctx.strokeStyle='rgba(255,100,0,0.1)'; if (cwObj.bg==='arcade') ctx.strokeStyle='rgba(213,0,249,0.1)';
-    
-    // Динамическая сетка: предотвращает зависание при бесконечном отдалении
     let gridSize = 300; while(gridSize * camera.zoom < 50) gridSize *= 2; 
-    
     let startX = Math.floor((camera.x - vDX) / gridSize) * gridSize; let startY = Math.floor((camera.y - vDY) / gridSize) * gridSize;
     ctx.beginPath(); for (let x = startX; x < camera.x + vDX; x += gridSize) { ctx.moveTo(x, camera.y - vDY); ctx.lineTo(x, camera.y + vDY); } for (let y = startY; y < camera.y + vDY; y += gridSize) { ctx.moveTo(camera.x - vDX, y); ctx.lineTo(camera.x + vDX, y); } ctx.stroke();
     ctx.restore();
@@ -592,7 +622,6 @@ function gameLoop(timestamp) {
         entities.forEach(e => e.update(dt)); maintainInfiniteWorld(); checkCollisions(dt);
         if (pendingBossReward) { pendingBossReward = false; triggerBossReward(); }
         
-        // Масштабирование мощностей для огромных размеров
         if (player && player.epicBuffs.singularity > 0) { entities.forEach(e => { if (e !== player && e.r < player.r) { let dx=player.x-e.x; let dy=player.y-e.y; let dSq=dx*dx+dy*dy; let range=player.r*2.5; if (dSq<range*range && dSq>0) { let pull=500*dt*(player.r/20); e.x+=(dx/Math.sqrt(dSq))*pull; e.y+=(dy/Math.sqrt(dSq))*pull; } } }); }
         if (player && player.epicBuffs.aura > 0) { entities.forEach(e => { if (e !== player) { let dx=player.x-e.x; let dy=player.y-e.y; let dSq=dx*dx+dy*dy; let range=player.r*2; if (dSq<range*range) { e.targetR-=40*dt*(player.r/50); player.targetR+=15*dt*(player.r/50); if (Math.random()<0.1) createParticles(e.x, e.y, '#ff1744', 1, 3, Math.max(1, e.r/20)); if (e.targetR<10) e.targetR=10; } } }); }
         
@@ -601,7 +630,6 @@ function gameLoop(timestamp) {
         for (let i=shockwaves.length-1; i>=0; i--) { shockwaves[i].r+=(shockwaves[i].maxR-shockwaves[i].r)*5*dt; shockwaves[i].life-=dt; if (shockwaves[i].life<=0) shockwaves.splice(i, 1); }
         let bossExists = entities.some(e => e.isBoss); if (!bossExists) { bossTimer += realDt; if (bossTimer > 60) { spawnBoss(); bossTimer = 0; } }
         
-        // Камера откреплена от максимального масштаба, теперь вы можете быть размером с вселенную
         let targetZoom = 60 / Math.max(20, player.r);
         camera.zoom += (targetZoom - camera.zoom) * 4 * realDt;
         camera.x += (player.x - camera.x) * 6 * realDt; camera.y += (player.y - camera.y) * 6 * realDt;
@@ -636,7 +664,7 @@ function gameLoop(timestamp) {
     requestAnimationFrame(gameLoop);
 }
 
-function showMenu(menuId) { document.querySelectorAll('.ui-layer').forEach(el => el.classList.add('hidden')); document.getElementById(menuId).classList.remove('hidden'); document.getElementById('hud').classList.add('hidden'); document.getElementById('leaderboard').classList.add('hidden'); document.getElementById('dashBtn').classList.add('hidden'); document.getElementById('ascendBtn').classList.add('hidden'); }
+function showMenu(menuId) { document.querySelectorAll('.ui-layer').forEach(el => el.classList.add('hidden')); document.getElementById(menuId).classList.remove('hidden'); document.getElementById('hud').classList.add('hidden'); document.getElementById('leaderboard').classList.add('hidden'); document.getElementById('dashBtn').classList.add('hidden'); }
 function goFullscreen() { let elem = document.documentElement; if (elem.requestFullscreen) elem.requestFullscreen().catch(err=>console.log(err)); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen(); }
 
 function startGame() {
@@ -657,8 +685,6 @@ function gameOver() {
 function updateHUD() { 
     document.getElementById('scoreUI').innerText = Math.floor(player.targetR); 
     document.getElementById('levelUI').innerText = player.level; 
-    if (player.level >= 300) document.getElementById('ascendBtn').classList.remove('hidden'); 
-    else document.getElementById('ascendBtn').classList.add('hidden'); 
 }
 
 function updateLeaderboard() { let top = [...entities].sort((a, b) => b.r - a.r).slice(0, 5); let html = ''; top.forEach(e => html += `<li class="${e.isBoss ? 'boss-text' : (e.isPlayer ? 'player-text' : '')}">${e.name} ${e.emoji} - ${Math.floor(e.r)}</li>`); document.getElementById('lb-list').innerHTML = html; }
